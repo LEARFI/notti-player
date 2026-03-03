@@ -3,247 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Pro</title>
+    <title>Notti Music Engine</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
+        /* ОПТИМИЗАЦИЯ ОТРИСОВКИ */
         :root {
             --accent: #1DB954;
-            --bg: #000000;
+            --bg: #000;
             --panel: #121212;
+            --safe-top: env(safe-area-inset-top);
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
-        body {
-            background-color: var(--bg);
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            /* Убираем лишние расчеты браузера */
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+
+        body, html {
+            background: var(--bg);
             color: white;
             font-family: -apple-system, system-ui, sans-serif;
             margin: 0;
-            height: 100vh;
-            overflow: hidden;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Запрещаем общий скролл (защита от "беготни") */
+            position: fixed; /* Фиксируем всё тело */
+        }
+
+        /* ГЛАВНЫЙ КОНТЕЙНЕР */
+        .app-wrapper {
             display: flex;
             flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
         }
 
-        /* --- КОНТЕНТ --- */
-        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 160px; }
-        
-        .horizontal-scroll { display: flex; overflow-x: auto; gap: 15px; scrollbar-width: none; padding-bottom: 10px; }
-        .horizontal-scroll::-webkit-scrollbar { display: none; }
-
-        .artist-card { min-width: 110px; text-align: center; cursor: pointer; }
-        .artist-card img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid #222; }
-
-        .mix-card { min-width: 150px; background: var(--panel); padding: 12px; border-radius: 12px; cursor: pointer; }
-        .mix-card img { width: 100%; border-radius: 8px; margin-bottom: 10px; }
-
-        /* --- МИНИ-ПЛЕЕР --- */
-        .mini-player {
-            position: fixed; bottom: 80px; left: 10px; right: 10px;
-            background: rgba(25, 25, 25, 0.95); backdrop-filter: blur(15px);
-            border-radius: 12px; padding: 10px 15px;
-            display: flex; align-items: center; justify-content: space-between;
-            z-index: 1000; transition: 0.3s; border: 1px solid rgba(255,255,255,0.1);
-            display: none;
+        /* ЗОНА КОНТЕНТА (ЕДИНСТВЕННЫЙ СКРОЛЛ) */
+        .scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Плавный скролл iOS */
+            padding: calc(20px + var(--safe-top)) 20px 180px;
+            will-change: transform;
         }
-        .mini-player img { width: 40px; height: 40px; border-radius: 6px; margin-right: 12px; }
 
-        /* --- КРУПНЫЙ ПЛЕЕР (FULLSCREEN) --- */
+        /* ШАПКА */
+        .header {
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        /* ПОИСК */
+        .search-bar {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .search-bar input {
+            background: none; border: none; color: white; width: 100%;
+            outline: none; font-size: 16px; margin-left: 10px;
+        }
+
+        /* КАРТОЧКИ (ОПТИМИЗИРОВАННЫЕ) */
+        .track-card {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: var(--panel);
+            border-radius: 10px;
+            transform: translate3d(0,0,0); /* HW Acceleration */
+            cursor: pointer;
+        }
+        .track-card img {
+            width: 50px; height: 50px; border-radius: 6px;
+            margin-right: 15px; object-fit: cover;
+            background: #222;
+        }
+
+        /* ФИКСИРОВАННЫЙ ПЛЕЕР (НИЗ) */
+        .player-bar {
+            position: fixed;
+            bottom: 80px; left: 10px; right: 10px;
+            height: 64px;
+            background: var(--accent);
+            border-radius: 14px;
+            display: none; /* Скрыт до старта */
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            color: black;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        /* ПОЛНОЭКРАННЫЙ ПЛЕЕР (ВЫСОКАЯ ОПТИМИЗАЦИЯ) */
         .full-player {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(to bottom, #222, #000);
-            z-index: 9999; transform: translateY(100%);
-            transition: transform 0.5s cubic-bezier(0.32, 1, 0.23, 1);
-            display: flex; flex-direction: column; padding: 40px 30px;
-            align-items: center; text-align: center;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 10000;
+            transform: translate3d(0, 100%, 0);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 60px 30px;
+            align-items: center;
         }
-        .full-player.active { transform: translateY(0); }
+        .full-player.open { transform: translate3d(0, 0, 0); }
 
-        .close-btn { position: absolute; top: 50px; left: 25px; font-size: 24px; opacity: 0.5; }
-        
-        .fp-img-container { width: 80vw; max-width: 350px; margin: 60px 0 40px; }
-        .fp-img { 
-            width: 100%; aspect-ratio: 1/1; border-radius: 20px; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.7); transition: 0.4s;
-            transform: scale(0.9);
+        .big-cover {
+            width: 85vw; max-width: 320px;
+            aspect-ratio: 1/1;
+            border-radius: 20px;
+            object-fit: cover;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            margin-bottom: 40px;
         }
-        .fp-img.playing { transform: scale(1); }
 
-        .fp-info { width: 100%; margin-bottom: 30px; }
-        .fp-title { font-size: 24px; font-weight: 800; margin-bottom: 5px; }
-        .fp-artist { font-size: 18px; opacity: 0.6; }
+        /* КНОПКИ УПРАВЛЕНИЯ */
+        .controls { display: flex; align-items: center; gap: 40px; }
+        .play-main {
+            width: 70px; height: 70px; background: white; color: black;
+            border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-size: 28px;
+        }
 
-        .fp-controls { display: flex; align-items: center; gap: 40px; margin-top: 40px; }
-        .fp-play-btn { background: white; color: black; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-
-        /* --- НАВИГАЦИЯ --- */
+        /* МЕНЮ */
         nav {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: #000; display: flex; justify-content: space-around;
-            padding: 15px 0 calc(15px + var(--safe-bottom)); border-top: 1px solid #111;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 70px;
+            background: #000;
+            display: flex;
+            border-top: 1px solid #1a1a1a;
+            padding-bottom: var(--safe-bottom);
+            z-index: 900;
         }
-        nav div { font-size: 12px; opacity: 0.5; cursor: pointer; }
+        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; opacity: 0.5; }
         nav div.active { opacity: 1; color: var(--accent); }
-        nav i { display: block; font-size: 20px; margin-bottom: 4px; }
+        nav i { font-size: 20px; margin-bottom: 4px; }
 
-        #yt-player { position: absolute; visibility: hidden; pointer-events: none; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        #yt-player { position: absolute; top: -9999px; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="yt-player"></div>
 
-<div class="content">
-    <div id="page-home">
-        <h2>Главная</h2>
-        <div class="horizontal-scroll">
-            <div class="mix-card" onclick="search('Lofi Beats')">
-                <img src="https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg">
-                <b>Lo-fi микс</b>
-            </div>
-            <div class="mix-card" onclick="search('Phonk 2024')">
-                <img src="https://i.ytimg.com/vi/H6U6S6Tz-YI/hqdefault.jpg">
-                <b>Phonk Energy</b>
-            </div>
+<div class="app-wrapper">
+    <div class="header">
+        <div class="search-bar">
+            <i class="fas fa-search" style="opacity: 0.5;"></i>
+            <input type="text" id="searchInput" placeholder="Поиск (YT, Spotify, Mix)...">
         </div>
+    </div>
 
-        <h2>Артисты</h2>
-        <div class="horizontal-scroll">
-            <div class="artist-card" onclick="search('Платина')">
+    <div class="scroll-container" id="mainView">
+        <h2 style="font-weight: 800;">Твое Избранное</h2>
+        <div id="favList"></div>
+        
+        <h2 style="margin-top: 30px; font-weight: 800;">Рекомендации</h2>
+        <div id="resultsList">
+            <div class="track-card" onclick="startSearch('Платина')">
                 <img src="https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512">
-                <p>Платина</p>
+                <div><b>Платина</b><div style="font-size:12px; opacity:0.5;">Исполнитель</div></div>
             </div>
-            <div class="artist-card" onclick="search('OG Buda')">
+            <div class="track-card" onclick="startSearch('OG Buda')">
                 <img src="https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98">
-                <p>OG Buda</p>
+                <div><b>OG Buda</b><div style="font-size:12px; opacity:0.5;">Исполнитель</div></div>
             </div>
         </div>
     </div>
-    
-    <div id="page-search" style="display:none;">
-        <input type="text" id="main-search" placeholder="Поиск музыки..." style="width:100%; padding:15px; background:#1a1a1a; border:none; border-radius:12px; color:white; font-size:16px; outline:none;">
-        <div id="results" style="margin-top:20px;"></div>
-    </div>
-</div>
 
-<div class="mini-player" id="mini-p" onclick="toggleFullPlayer(true)">
-    <div style="display:flex; align-items:center; flex:1; overflow:hidden;">
-        <img id="m-img" src="">
-        <div style="overflow:hidden;">
-            <div id="m-title" style="font-weight:bold; font-size:14px; white-space:nowrap; text-overflow:ellipsis;"></div>
-            <div id="m-artist" style="font-size:11px; opacity:0.6;"></div>
+    <div class="player-bar" id="miniPlayer" onclick="openFull()">
+        <img id="mImg" src="">
+        <div style="flex:1; overflow:hidden; font-weight:700; font-size:14px; white-space:nowrap; text-overflow:ellipsis;" id="mTitle"></div>
+        <i id="mPlayBtn" class="fas fa-play" style="font-size:20px; padding:10px;" onclick="event.stopPropagation(); togglePlay();"></i>
+    </div>
+
+    <div class="full-player" id="fullPlayer">
+        <i class="fas fa-chevron-down" style="position:absolute; top:50px; left:25px; font-size:24px;" onclick="closeFull()"></i>
+        <img id="fImg" class="big-cover" src="">
+        <div id="fTitle" style="font-size:24px; font-weight:800; text-align:center;"></div>
+        <div id="fArtist" style="font-size:16px; opacity:0.5; margin-bottom:40px;"></div>
+        
+        <div class="controls">
+            <i class="fas fa-step-backward" style="font-size:28px;" onclick="prev()"></i>
+            <div class="play-main" onclick="togglePlay()">
+                <i id="fPlayBtn" class="fas fa-play"></i>
+            </div>
+            <i class="fas fa-step-forward" style="font-size:28px;" onclick="next()"></i>
         </div>
+        
+        <i class="far fa-heart" id="likeBtn" style="margin-top:50px; font-size:28px;" onclick="toggleLike()"></i>
     </div>
-    <div style="display:flex; gap:15px; align-items:center;">
-        <i id="m-play" class="fas fa-play" onclick="event.stopPropagation(); toggle();"></i>
-    </div>
+
+    <nav>
+        <div class="active" onclick="switchTab('home', this)"><i class="fas fa-home"></i>Главная</div>
+        <div onclick="switchTab('search', this)"><i class="fas fa-heart"></i>Избранное</div>
+        <div onclick="tg.showAlert('Версия 3.1 Оптимизирована')"><i class="fas fa-cog"></i>Опции</div>
+    </nav>
 </div>
-
-<div class="full-player" id="full-p">
-    <i class="fas fa-chevron-down close-btn" onclick="toggleFullPlayer(false)"></i>
-    
-    <div class="fp-img-container">
-        <img id="fp-img" class="fp-img" src="">
-    </div>
-
-    <div class="fp-info">
-        <div id="fp-title" class="fp-title"></div>
-        <div id="fp-artist" class="fp-artist"></div>
-    </div>
-
-    <div style="width:100%;">
-        <input type="range" id="fp-range" value="0" style="width:100%; accent-color:white;" oninput="seek(this.value)">
-    </div>
-
-    <div class="fp-controls">
-        <i class="fas fa-step-backward" style="font-size:24px;" onclick="prev()"></i>
-        <div class="fp-play-btn" onclick="toggle()">
-            <i id="fp-play" class="fas fa-play"></i>
-        </div>
-        <i class="fas fa-step-forward" style="font-size:24px;" onclick="next()"></i>
-    </div>
-</div>
-
-<nav>
-    <div class="active" onclick="navTo('home', this)"><i class="fas fa-home"></i>Домой</div>
-    <div onclick="navTo('search', this)"><i class="fas fa-search"></i>Поиск</div>
-</nav>
 
 <script>
     const tg = window.Telegram.WebApp;
-    let player, currentIdx = -1, playlist = [];
+    tg.expand();
+    tg.enableClosingConfirmation();
+
+    let player, playlist = [], curIdx = -1;
+    let favorites = JSON.parse(localStorage.getItem('notti_favs') || '[]');
 
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', {
             events: {
                 'onStateChange': (e) => {
                     const isPlaying = e.data === 1;
-                    document.getElementById('m-play').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
-                    document.getElementById('fp-play').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
-                    document.getElementById('fp-img').classList.toggle('playing', isPlaying);
+                    document.getElementById('mPlayBtn').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+                    document.getElementById('fPlayBtn').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
                     if(e.data === 0) next();
                 }
             }
         });
     }
 
-    function toggleFullPlayer(show) {
-        document.getElementById('full-p').classList.toggle('active', show);
-        tg.HapticFeedback.impactOccurred('medium');
-    }
-
-    async function search(q) {
-        navTo('search', document.querySelectorAll('nav div')[1]);
-        document.getElementById('main-search').value = q;
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q + " Official Music")}`);
+    async function startSearch(val) {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(val + " Official Audio")}`);
         const data = await res.json();
         playlist = data;
-        document.getElementById('results').innerHTML = data.map((t, i) => `
-            <div style="display:flex; align-items:center; margin-bottom:15px;" onclick="play(${i})">
-                <img src="${t.img}" style="width:55px; height:55px; border-radius:10px; margin-right:15px;">
-                <div>
-                    <div style="font-weight:bold;">${t.title}</div>
-                    <div style="opacity:0.5;">${t.artist}</div>
+        renderList(data);
+    }
+
+    function renderList(data) {
+        const cont = document.getElementById('resultsList');
+        cont.innerHTML = data.map((t, i) => `
+            <div class="track-card" onclick="play(${i})">
+                <img src="${t.img}">
+                <div style="flex:1; overflow:hidden;">
+                    <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${t.title}</div>
+                    <div style="font-size:12px; opacity:0.5;">${t.artist}</div>
                 </div>
             </div>
         `).join('');
     }
 
     function play(idx) {
-        currentIdx = idx;
-        const t = playlist[idx];
-        document.getElementById('mini-p').style.display = 'flex';
+        curIdx = idx;
+        const t = playlist[curIdx];
+        document.getElementById('miniPlayer').style.display = 'flex';
         
-        // Обновление UI
-        ['m', 'fp'].forEach(p => {
-            document.getElementById(`${p}-img`).src = t.img;
-            document.getElementById(`${p}-title`).innerText = t.title;
-            document.getElementById(`${p}-artist`).innerText = t.artist;
-        });
-
+        document.getElementById('mImg').src = t.img;
+        document.getElementById('fImg').src = t.img;
+        document.getElementById('mTitle').innerText = t.title;
+        document.getElementById('fTitle').innerText = t.title;
+        document.getElementById('fArtist').innerText = t.artist;
+        
         player.loadVideoById(t.id);
         player.playVideo();
         player.unMute();
+        updateLikeUI();
+        tg.HapticFeedback.impactOccurred('light');
     }
 
-    function toggle() {
-        player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo();
+    function togglePlay() {
+        if(player.getPlayerState() === 1) player.pauseVideo();
+        else player.playVideo();
     }
 
-    function next() { if(currentIdx < playlist.length - 1) play(currentIdx + 1); }
-    function prev() { if(currentIdx > 0) play(currentIdx - 1); }
+    function next() { if(curIdx < playlist.length - 1) play(curIdx + 1); }
+    function prev() { if(curIdx > 0) play(curIdx - 1); }
 
-    function navTo(p, el) {
-        document.getElementById('page-home').style.display = p === 'home' ? 'block' : 'none';
-        document.getElementById('page-search').style.display = p === 'search' ? 'block' : 'none';
+    function openFull() { document.getElementById('fullPlayer').classList.add('open'); }
+    function closeFull() { document.getElementById('fullPlayer').classList.remove('open'); }
+
+    function toggleLike() {
+        const t = playlist[curIdx];
+        const idx = favorites.findIndex(f => f.id === t.id);
+        if(idx === -1) {
+            favorites.push(t);
+            tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            favorites.splice(idx, 1);
+        }
+        localStorage.setItem('notti_favs', JSON.stringify(favorites));
+        updateLikeUI();
+        renderFavs();
+    }
+
+    function updateLikeUI() {
+        const t = playlist[curIdx];
+        const isFav = favorites.some(f => f.id === t.id);
+        document.getElementById('likeBtn').className = isFav ? 'fas fa-heart' : 'far fa-heart';
+        document.getElementById('likeBtn').style.color = isFav ? var(--accent) : 'white';
+    }
+
+    function renderFavs() {
+        const cont = document.getElementById('favList');
+        if(favorites.length === 0) {
+            cont.innerHTML = '<p style="opacity:0.3; text-align:center;">Пусто</p>';
+            return;
+        }
+        cont.innerHTML = favorites.map((t, i) => `
+            <div class="track-card" onclick="playlist=favorites; play(${i})">
+                <img src="${t.img}">
+                <div><b>${t.title}</b><div style="font-size:12px; opacity:0.5;">${t.artist}</div></div>
+            </div>
+        `).join('');
+    }
+
+    function switchTab(tab, el) {
         document.querySelectorAll('nav div').forEach(d => d.classList.remove('active'));
         el.classList.add('active');
+        if(tab === 'search') renderFavs();
     }
 
-    document.getElementById('main-search').onkeypress = (e) => { if(e.key === 'Enter') search(e.target.value); };
-</script>
+    document.getElementById('searchInput').onkeypress = (e) => {
+        if(e.key === 'Enter') startSearch(e.target.value);
+    };
 
+    window.onload = renderFavs;
+</script>
 </body>
 </html>
