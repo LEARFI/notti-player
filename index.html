@@ -3,132 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Native</title>
+    <title>Notti Music Global</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --accent: #1DB954; --bg: #000; }
-        
+        :root { --accent: #1DB954; --bg: #000; --card: #121212; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body, html { 
-            background: var(--bg); color: white; margin: 0; padding: 0; 
-            height: 100vh; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; 
-        }
-
+        body, html { background: var(--bg); color: white; margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: -apple-system, sans-serif; }
         .app { display: flex; flex-direction: column; height: 100vh; }
-
-        /* Страницы */
         .page { flex: 1; overflow-y: auto; padding: 20px 20px 150px; display: none; }
         .page.active { display: block; }
 
-        /* Сетка артистов */
-        .artist-item { min-width: 100px; text-align: center; cursor: pointer; }
-        .artist-img { 
-            width: 90px; height: 90px; border-radius: 50%; 
-            object-fit: cover; background: #222; margin-bottom: 8px;
-            border: 1px solid #333;
-        }
+        /* Артисты */
+        .artist-item { min-width: 110px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .artist-item:active { transform: scale(0.95); }
+        .artist-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background: #222; border: 1px solid #333; }
 
-        /* ПОЛНОЭКРАННЫЙ ПЛЕЕР (Исправленная геометрия) */
-        .full-player {
-            position: fixed; inset: 0; background: #000; z-index: 9999;
-            display: none; flex-direction: column;
-            padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom);
-        }
-        .full-player.active { display: flex; animation: slideIn 0.3s ease-out; }
-
-        .fp-header { height: 60px; display: flex; align-items: center; justify-content: space-between; }
+        /* Плеер */
+        .full-player { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom); }
+        .full-player.active { display: flex; animation: slideUp 0.3s ease-out; }
+        .fp-cover-area { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+        .fp-cover-area img { max-width: 100%; max-height: 100%; aspect-ratio: 1/1; border-radius: 20px; object-fit: cover; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
         
-        /* Контейнер обложки - теперь она не распирает экран */
-        .fp-cover-area {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            min-height: 0; padding: 20px 0;
-        }
-        .fp-cover-area img {
-            max-width: 100%; max-height: 100%; aspect-ratio: 1/1;
-            border-radius: 24px; object-fit: cover;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-        }
+        .progress-container { width: 100%; height: 4px; background: #333; border-radius: 2px; margin: 30px 0; position: relative; cursor: pointer; }
+        #progress { height: 100%; background: #fff; border-radius: 2px; width: 0%; position: relative; }
+        #progress::after { content: ''; position: absolute; right: -6px; top: -4px; width: 12px; height: 12px; background: #fff; border-radius: 50%; }
 
-        .fp-info { padding-bottom: 30px; }
-        .fp-info h1 { font-size: 26px; margin: 0; font-weight: 800; }
-        .fp-info p { font-size: 18px; color: #b3b3b3; margin: 8px 0 0; }
-
-        /* Прогресс-бар */
-        .progress-container { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-bottom: 40px; position: relative; }
-        #progress { height: 100%; background: #fff; border-radius: 2px; width: 0%; }
-
-        .fp-controls {
-            display: flex; align-items: center; justify-content: space-between;
-            padding-bottom: 40px;
-        }
-        .play-btn {
-            width: 80px; height: 80px; background: white; color: black;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 32px;
-        }
-
-        /* Навигация */
-        nav { 
-            position: fixed; bottom: 0; width: 100%; height: 75px; 
-            background: rgba(0,0,0,0.9); display: flex; border-top: 1px solid #111;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; font-size: 11px; }
+        .fp-controls { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; }
+        .play-btn { width: 75px; height: 75px; background: white; color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+        
+        .track-row { display: flex; align-items: center; margin-bottom: 15px; padding: 10px; border-radius: 10px; transition: 0.2s; }
+        .track-row:active { background: #1a1a1a; }
+        
+        nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.95); display: flex; border-top: 1px solid #111; z-index: 1000; }
+        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; font-size: 10px; }
         nav div.active { opacity: 1; color: var(--accent); }
+        nav i { font-size: 20px; margin-bottom: 4px; }
 
-        @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <div class="app">
     <div id="p-home" class="page active">
-        <h2 style="font-size: 28px; font-weight: 800;">Артисты</h2>
-        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px;" id="artists"></div>
+        <h1 style="font-size: 28px;">Обзор</h1>
+        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 25px;" id="artist-shelf"></div>
         
-        <h2>Тренды</h2>
-        <div id="tracks-list"></div>
+        <h2 style="font-size: 22px;">Мировые хиты</h2>
+        <div id="global-tracks"></div>
     </div>
 
     <div class="full-player" id="player-ui">
-        <div class="fp-header">
-            <i class="fas fa-chevron-down" onclick="toggleUI(false)" style="font-size: 24px;"></i>
-            <span style="text-transform: uppercase; font-size: 12px; letter-spacing: 2px; opacity: 0.6;">Notti Music</span>
-            <i class="fas fa-ellipsis-h"></i>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <i class="fas fa-chevron-down" onclick="toggleUI(false)" style="font-size: 22px;"></i>
+            <span style="font-size: 12px; letter-spacing: 1px; opacity:0.7;">СЕЙЧАС ИГРАЕТ</span>
+            <i class="fas fa-ellipsis-v"></i>
         </div>
 
-        <div class="fp-cover-area">
-            <img id="f-img" src="" alt="cover">
+        <div class="fp-cover-area"><img id="f-img" src=""></div>
+
+        <div style="margin-bottom: 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h1 id="f-title" style="margin:0; font-size:24px;"></h1>
+                    <p id="f-artist" style="margin:5px 0 0; opacity:0.6; font-size:18px;"></p>
+                </div>
+                <i class="far fa-heart" id="like-btn" onclick="toggleLike()" style="font-size:24px;"></i>
+            </div>
         </div>
 
-        <div class="fp-info">
-            <h1 id="f-title">Название</h1>
-            <p id="f-artist">Исполнитель</p>
-        </div>
-
-        <div class="progress-container">
+        <div class="progress-container" onclick="seek(event)">
             <div id="progress"></div>
         </div>
 
         <div class="fp-controls">
-            <i class="fas fa-random" style="opacity: 0.5;"></i>
-            <i class="fas fa-step-backward" style="font-size: 28px;"></i>
-            <div class="play-btn" onclick="togglePlay()">
-                <i id="p-icon" class="fas fa-play"></i>
-            </div>
-            <i class="fas fa-step-forward" style="font-size: 28px;"></i>
-            <i class="fas fa-redo" style="opacity: 0.5;"></i>
+            <i class="fas fa-random" onclick="this.style.color=this.style.color=='var(--accent)'?'#fff':'var(--accent)'"></i>
+            <i class="fas fa-step-backward" onclick="prevTrack()" style="font-size:30px;"></i>
+            <div class="play-btn" onclick="togglePlay()"><i id="p-icon" class="fas fa-play"></i></div>
+            <i class="fas fa-step-forward" onclick="nextTrack()" style="font-size:30px;"></i>
+            <i class="fas fa-redo" onclick="audio.loop = !audio.loop; this.style.color=audio.loop?'var(--accent)':'#fff'"></i>
         </div>
     </div>
 
     <nav>
         <div class="active"><i class="fas fa-home"></i>Главная</div>
+        <div><i class="fas fa-compass"></i>Навигация</div>
         <div><i class="fas fa-search"></i>Поиск</div>
-        <div><i class="fas fa-heart"></i>Любимое</div>
-        <div onclick="switchTab('p-home')"><i class="fas fa-user"></i>Профиль</div>
+        <div onclick="toggleUI(true)"><i class="fas fa-play-circle"></i>Плеер</div>
     </nav>
 </div>
 
@@ -136,53 +99,47 @@
     const tg = window.Telegram.WebApp;
     const audio = new Audio();
     let isPlaying = false;
+    let currentIdx = 0;
 
-    // База данных (в реальном приложении это будет приходить с сервера)
     const musicData = [
-        { 
-            title: "Хенни", 
-            artist: "Платина", 
-            img: "https://e-cdns-images.dzcdn.net/images/cover/61665e71887e04918f0a05845239a2d6/500x500.jpg",
-            url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" // Замени на свои MP3
-        },
-        { 
-            title: "Легенда", 
-            artist: "OG Buda", 
-            img: "https://e-cdns-images.dzcdn.net/images/cover/9875f5436c9443586a345a98/500x500.jpg",
-            url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-        }
+        { title: "Blinding Lights", artist: "The Weeknd", img: "https://i.scdn.co/image/ab67616d0000b273886577543881958f3317a22a", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+        { title: "God's Plan", artist: "Drake", img: "https://i.scdn.co/image/ab67616d0000b273f9016935f3089d316a70743b", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+        { title: "Starboy", artist: "The Weeknd", img: "https://i.scdn.co/image/ab67616d0000b2734718e2b124f79258be7bc452", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+        { title: "Anti-Hero", artist: "Taylor Swift", img: "https://i.scdn.co/image/ab67616d0000b273bbade342786c6697acc21638", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+        { title: "Хенни", artist: "Платина", img: "https://i.scdn.co/image/ab67616d0000b273c18600d58852655a6d573512", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" }
     ];
 
     const artists = [
-        { name: "Платина", img: "https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512" },
-        { name: "OG Buda", img: "https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98" },
-        { name: "Friendly Thug", img: "https://i.scdn.co/image/ab6761610000e5eb559810775d799988a87c5305" }
+        { name: "The Weeknd", img: "https://i.scdn.co/image/ab6761610000e5eb886577543881958f3317a22a" },
+        { name: "Taylor Swift", img: "https://i.scdn.co/image/ab6761610000e5eb5a00969a5398c31767c366b6" },
+        { name: "Drake", img: "https://i.scdn.co/image/ab6761610000e5eb4293385d324db8558148af90" },
+        { name: "Travis Scott", img: "https://i.scdn.co/image/ab6761610000e5eb19c2790744c792dccddd395c" },
+        { name: "Платина", img: "https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512" }
     ];
 
     function init() {
-        // Рендер артистов
-        document.getElementById('artists').innerHTML = artists.map(a => `
-            <div class="artist-item">
+        document.getElementById('artist-shelf').innerHTML = artists.map(a => `
+            <div class="artist-item" onclick="startSearch('${a.name}')">
                 <img src="${a.img}" class="artist-img">
-                <div style="font-size:12px;">${a.name}</div>
+                <div style="font-size:12px; margin-top:10px; font-weight:600;">${a.name}</div>
             </div>
         `).join('');
 
-        // Рендер треков
-        document.getElementById('tracks-list').innerHTML = musicData.map((t, i) => `
-            <div style="display:flex; align-items:center; margin-bottom:15px;" onclick="playTrack(${i})">
-                <img src="${t.img}" style="width:50px; height:50px; border-radius:8px; margin-right:15px;">
-                <div>
-                    <div style="font-weight:bold;">${t.title}</div>
-                    <div style="opacity:0.5; font-size:12px;">${t.artist}</div>
+        document.getElementById('global-tracks').innerHTML = musicData.map((t, i) => `
+            <div class="track-row" onclick="playTrack(${i})">
+                <img src="${t.img}" style="width:55px; height:55px; border-radius:8px; margin-right:15px;">
+                <div style="flex:1;">
+                    <div style="font-weight:bold; font-size:16px;">${t.title}</div>
+                    <div style="opacity:0.5; font-size:13px;">${t.artist}</div>
                 </div>
+                <i class="fas fa-play" style="opacity:0.3;"></i>
             </div>
         `).join('');
-
         tg.expand();
     }
 
     function playTrack(i) {
+        currentIdx = i;
         const t = musicData[i];
         document.getElementById('f-img').src = t.img;
         document.getElementById('f-title').innerText = t.title;
@@ -193,8 +150,7 @@
         isPlaying = true;
         updateIcon();
         toggleUI(true);
-        
-        tg.HapticFeedback.impactOccurred('medium');
+        tg.HapticFeedback.impactOccurred('light');
     }
 
     function togglePlay() {
@@ -211,11 +167,35 @@
         document.getElementById('player-ui').classList.toggle('active', show);
     }
 
-    // Обновление прогресс-бара
+    function nextTrack() {
+        currentIdx = (currentIdx + 1) % musicData.length;
+        playTrack(currentIdx);
+    }
+
+    function prevTrack() {
+        currentIdx = (currentIdx - 1 + musicData.length) % musicData.length;
+        playTrack(currentIdx);
+    }
+
+    function toggleLike() {
+        const btn = document.getElementById('like-btn');
+        btn.classList.toggle('fas');
+        btn.classList.toggle('far');
+        btn.style.color = btn.classList.contains('fas') ? 'var(--accent)' : '#fff';
+    }
+
+    function seek(e) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pct = (e.clientX - rect.left) / rect.width;
+        audio.currentTime = pct * audio.duration;
+    }
+
     audio.ontimeupdate = () => {
         const pct = (audio.currentTime / audio.duration) * 100;
         document.getElementById('progress').style.width = pct + '%';
     };
+
+    audio.onended = nextTrack;
 
     init();
 </script>
