@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Ultimate + Albums</title>
+    <title>Notti Music Final Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -13,139 +13,142 @@
 
         body, html {
             background: var(--bg); color: white; margin: 0; padding: 0;
-            height: 100vh; width: 100vw; overflow: hidden; font-family: -apple-system, sans-serif;
+            height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif;
         }
 
-        .app { display: flex; flex-direction: column; height: 100vh; position: relative; }
-        .page { flex: 1; overflow-y: auto; padding: 20px 20px 120px; display: none; -webkit-overflow-scrolling: touch; }
+        .app { display: flex; flex-direction: column; height: 100vh; width: 100vw; position: relative; }
+        
+        .page { flex: 1; overflow-y: auto; padding: 20px 20px 140px; display: none; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
 
-        /* Профиль артиста */
-        .artist-view {
-            position: fixed; inset: 0; background: #000; z-index: 2000;
-            display: none; flex-direction: column; overflow-y: auto; padding-bottom: 120px;
+        /* ИСПРАВЛЕННЫЙ ПЛЕЕР (НЕ КОСИТ) */
+        .full-player {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
+            display: none; flex-direction: column; box-sizing: border-box;
+            padding: env(safe-area-inset-top) 25px env(safe-area-inset-bottom);
         }
-        .artist-view.active { display: flex; }
-        .artist-header { height: 280px; position: relative; display: flex; align-items: flex-end; padding: 25px; }
-        .artist-header img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
-        
-        /* Стили Альбомов */
-        .album-grid { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
-        .album-grid::-webkit-scrollbar { display: none; }
-        .album-card { min-width: 140px; cursor: pointer; }
-        .album-card img { width: 140px; height: 140px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .album-card div { font-size: 13px; font-weight: bold; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .album-card span { font-size: 11px; opacity: 0.5; }
-
-        /* Настройки и Плеер (без изменений) */
-        .auth-screen { position: fixed; inset: 0; background: #000; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; }
-        .auth-btn { width: 100%; max-width: 280px; padding: 15px; border-radius: 30px; border: none; margin-bottom: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .btn-google { background: white; color: black; }
-        .btn-tg { background: #24A1DE; color: white; }
-
-        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card); border-radius: 12px; margin-bottom: 10px; }
-        .switch { width: 40px; height: 20px; background: #444; border-radius: 20px; position: relative; }
-        .switch.on { background: var(--accent); }
-        .switch::after { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.2s; }
-        .switch.on::after { left: 22px; }
-
-        .mini-player { position: fixed; bottom: 80px; left: 10px; right: 10px; height: 60px; background: var(--accent); border-radius: 12px; display: none; align-items: center; padding: 0 12px; z-index: 500; color: #000; }
-        .full-player { position: fixed; inset: 0; background: #000; z-index: 3000; display: none; flex-direction: column; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom); }
         .full-player.active { display: flex; }
-        .cover-wrapper { width: 100%; height: 40vh; display: flex; justify-content: center; align-items: center; min-height: 0; }
-        .cover-wrapper img { max-width: 100%; max-height: 100%; border-radius: 12px; object-fit: contain; }
+
+        .fp-top { height: 50px; display: flex; align-items: center; }
         
-        nav { position: fixed; bottom: 0; width: 100%; height: 70px; background: #000; border-top: 1px solid #1a1a1a; display: flex; z-index: 1000; }
+        /* Обложка теперь вписана жестко */
+        .fp-middle {
+            flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0;
+        }
+        .fp-middle img {
+            max-width: 100%; max-height: 90%; border-radius: 15px; 
+            object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+
+        .fp-bottom { height: 220px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+        .fp-controls { display: flex; align-items: center; justify-content: center; gap: 35px; margin-top: 20px; }
+        
+        .play-circle {
+            width: 75px; height: 75px; background: white; color: black;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px;
+        }
+
+        /* МИНИ ПЛЕЕР */
+        .mini-player {
+            position: fixed; bottom: 85px; left: 10px; right: 10px;
+            height: 65px; background: var(--accent); border-radius: 14px;
+            display: none; align-items: center; padding: 0 12px; z-index: 1000; color: #000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+        .mini-player img { width: 45px; height: 45px; border-radius: 8px; margin-right: 12px; object-fit: cover; }
+
+        /* АРТИСТЫ */
+        .artist-view { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; flex-direction: column; overflow-y: auto; }
+        .artist-view.active { display: flex; }
+        .ah-box { height: 300px; display: flex; align-items: flex-end; padding: 30px; position: relative; }
+        .ah-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+
+        nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; border-top: 1px solid #1a1a1a; display: flex; z-index: 500; }
         nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; font-size: 11px; }
         nav div.active { opacity: 1; color: var(--accent); }
-        nav i { font-size: 22px; margin-bottom: 4px; }
-        #yt-player { position: absolute; visibility: hidden; }
+        
+        #yt-player { position: absolute; left: -9999px; top: -9999px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="yt-player"></div>
 
-<div class="auth-screen" id="auth-screen">
-    <h1 style="font-size: 40px; margin-bottom: 10px;">Notti</h1>
-    <button class="auth-btn btn-google" onclick="login('Google')"><i class="fab fa-google"></i> Вход через Google</button>
-    <button class="auth-btn btn-tg" onclick="login('Telegram')"><i class="fab fa-telegram"></i> Вход через Telegram</button>
-</div>
-
 <div class="app">
     <div id="p-home" class="page active">
-        <h2>Артисты</h2>
-        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px;" id="artists-list"></div>
-        <h2>Поиск</h2>
-        <input type="text" id="s-input" placeholder="Треки или альбомы..." style="width:100%; padding:14px; background:#111; border:none; border-radius:10px; color:#fff; outline:none;">
-        <div id="res" style="margin-top: 20px;"></div>
+        <h2 style="font-size: 24px;">Артисты</h2>
+        <div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px;" id="artists-list"></div>
+        <h2 style="font-size: 24px;">Поиск</h2>
+        <input type="text" id="s-input" placeholder="Поиск музыки..." style="width:100%; padding:15px; background:#111; border:none; border-radius:12px; color:#fff; font-size:16px;">
+        <div id="res" style="margin-top: 25px;"></div>
     </div>
 
     <div id="p-settings" class="page">
         <h2>Настройки</h2>
-        <div class="setting-item"><span>Качество звука</span><div class="switch on"></div></div>
-        <div class="setting-item"><span>Эквалайзер</span><div class="switch"></div></div>
-        <button onclick="logout()" style="width: 100%; padding: 15px; background: #ff3b30; border: none; border-radius: 12px; color: white; font-weight: bold; margin-top: 20px;">Выйти</button>
-    </div>
-
-    <div class="artist-view" id="artist-view">
-        <div class="artist-header">
-            <img id="ah-img" src="">
-            <i class="fas fa-arrow-left" style="position:absolute; top:50px; left:20px; z-index:10;" onclick="closeArtist()"></i>
-            <h1 id="ah-name" style="position:relative; font-size:42px; margin:0; text-shadow: 0 4px 10px rgba(0,0,0,0.5);"></h1>
-        </div>
-        <div style="padding: 20px;">
-            <h3>Альбомы и выпуски</h3>
-            <div class="album-grid" id="album-list"></div>
-            <h3>Популярные треки</h3>
-            <div id="artist-tracks"></div>
-        </div>
+        <button onclick="localStorage.clear(); location.reload();" style="width:100%; padding:15px; background:#ff3b30; color:white; border:none; border-radius:12px; font-weight:bold;">Очистить данные</button>
     </div>
 
     <div class="mini-player" id="mini" onclick="setFull(true)">
         <img id="m-img" src="">
-        <div id="m-txt" style="flex:1; margin-left:12px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
-        <i id="m-btn" class="fas fa-play" style="font-size:22px; padding:10px;" onclick="event.stopPropagation(); toggle();"></i>
+        <div style="flex:1; overflow:hidden; font-weight:800; white-space:nowrap; text-overflow:ellipsis;" id="m-txt"></div>
+        <i id="m-btn" class="fas fa-play" style="font-size:24px; padding:10px;" onclick="event.stopPropagation(); toggle();"></i>
     </div>
 
     <div class="full-player" id="full">
-        <div style="padding:20px 0;" onclick="setFull(false)"><i class="fas fa-chevron-down"></i></div>
-        <div class="cover-wrapper"><img id="f-img" src=""></div>
-        <div style="text-align:center; padding:20px 0;"><h2 id="f-title"></h2><p id="f-art"></p></div>
-        <div style="display:flex; align-items:center; justify-content:center; gap:40px; flex:1;">
-            <i class="fas fa-step-backward" onclick="prev()"></i>
-            <div style="width:70px; height:70px; background:#fff; color:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px;" onclick="toggle()"><i id="f-btn" class="fas fa-play"></i></div>
-            <i class="fas fa-step-forward" onclick="next()"></i>
+        <div class="fp-top" onclick="setFull(false)"><i class="fas fa-chevron-down" style="font-size:24px;"></i></div>
+        <div class="fp-middle"><img id="f-img" src=""></div>
+        <div class="fp-bottom">
+            <h2 id="f-title" style="margin:0; font-size:26px;"></h2>
+            <p id="f-art" style="opacity:0.6; font-size:18px; margin:5px 0 0;"></p>
+            <div class="fp-controls">
+                <i class="fas fa-step-backward" style="font-size:28px;" onclick="prev()"></i>
+                <div class="play-circle" onclick="toggle()"><i id="f-btn" class="fas fa-play"></i></div>
+                <i class="fas fa-step-forward" style="font-size:28px;" onclick="next()"></i>
+            </div>
         </div>
     </div>
 
+    <div class="artist-view" id="artist-view">
+        <div class="ah-box">
+            <img id="ah-img" src="">
+            <i class="fas fa-arrow-left" style="position:absolute; top:50px; left:25px; z-index:100;" onclick="closeArtist()"></i>
+            <h1 id="ah-name" style="position:relative; font-size:45px; margin:0; font-weight:900;"></h1>
+        </div>
+        <div style="padding: 25px;" id="artist-tracks"></div>
+    </div>
+
     <nav>
-        <div class="active" onclick="tab('p-home', this)"><i class="fas fa-home"></i>Обзор</div>
-        <div onclick="tab('p-settings', this)"><i class="fas fa-cog"></i>Настройки</div>
+        <div class="active" onclick="tab('p-home', this)"><i class="fas fa-search" style="font-size:22px; margin-bottom:5px;"></i>Обзор</div>
+        <div onclick="tab('p-settings', this)"><i class="fas fa-cog" style="font-size:22px; margin-bottom:5px;"></i>Опции</div>
     </nav>
 </div>
 
 <script>
     let player, playlist = [], cur = -1;
+    // ГАРАНТИРОВАННО РАБОЧИЕ ФОТО
     const artistsData = [
-        { name: "Платина", img: "https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512" },
-        { name: "Friendly Thug 52", img: "https://i.scdn.co/image/ab6761610000e5eb559810775d799988a87c5305" },
-        { name: "OG Buda", img: "https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98" }
+        { name: "Платина", img: "https://i1.sndcdn.com/avatars-000600125742-mqqe0n-t500x500.jpg" },
+        { name: "OG Buda", img: "https://i1.sndcdn.com/avatars-000572836269-i4qfbc-t500x500.jpg" },
+        { name: "FRIENDLY THUG 52 NGG", img: "https://i1.sndcdn.com/avatars-H3j6p60f2yq6W2QY-O4wzww-t500x500.jpg" }
     ];
 
     function onYouTubeIframeAPIReady() {
-        player = new YT.Player('yt-player', { events: { 'onStateChange': (e) => {
-            const isP = e.data === 1;
-            document.getElementById('m-btn').className = isP ? 'fas fa-pause' : 'fas fa-play';
-            document.getElementById('f-btn').className = isP ? 'fas fa-pause' : 'fas fa-play';
-        }}});
+        player = new YT.Player('yt-player', {
+            playerVars: { 'autoplay': 1, 'playsinline': 1 },
+            events: { 'onStateChange': (e) => {
+                const isP = e.data === 1;
+                document.getElementById('m-btn').className = isP ? 'fas fa-pause' : 'fas fa-play';
+                document.getElementById('f-btn').className = isP ? 'fas fa-pause' : 'fas fa-play';
+                if(e.data === 0) next();
+            }}
+        });
     }
 
     function renderArtists() {
         document.getElementById('artists-list').innerHTML = artistsData.map(a => `
-            <div onclick="openArtist('${a.name}', '${a.img}')" style="min-width:100px; text-align:center;">
-                <img src="${a.img}" style="width:100px; height:100px; border-radius:50%; object-fit:cover;">
-                <p style="font-size:12px; margin-top:8px;">${a.name}</p>
+            <div onclick="openArtist('${a.name}', '${a.img}')" style="min-width:110px; text-align:center;">
+                <img src="${a.img}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #222;">
+                <p style="font-size:12px; margin-top:10px; font-weight:bold;">${a.name}</p>
             </div>
         `).join('');
     }
@@ -154,37 +157,24 @@
         document.getElementById('ah-img').src = img;
         document.getElementById('ah-name').innerText = name;
         document.getElementById('artist-view').classList.add('active');
-        
-        // Имитация Альбомов
-        const albums = ["Sosa Muzik", "Lambo Urban", "Cristal & MOЁT", "Legendary"];
-        document.getElementById('album-list').innerHTML = albums.map(alb => `
-            <div class="album-card" onclick="search('${name} ${alb}')">
-                <img src="${img}">
-                <div>${alb}</div>
-                <span>Альбом • 2024</span>
-            </div>
-        `).join('');
-
-        const r = await fetch(`/api/search?q=${encodeURIComponent(name + " Official Audio")}`);
+        const r = await fetch(`/api/search?q=${encodeURIComponent(name + " треки")}`);
         const d = await r.json();
-        document.getElementById('artist-tracks').innerHTML = d.map((t, i) => `
-            <div style="display:flex; align-items:center; margin-bottom:12px;" onclick="playlist=JSON.parse('${JSON.stringify(d).replace(/'/g, "\\'")}'); play(${i})">
-                <img src="${t.img}" style="width:48px; height:48px; border-radius:6px; margin-right:12px;">
+        document.getElementById('artist-tracks').innerHTML = `<h3>Популярные треки</h3>` + d.map((t, i) => `
+            <div style="display:flex; align-items:center; margin-bottom:15px;" onclick="playlist=JSON.parse('${JSON.stringify(d).replace(/'/g, "\\'")}'); play(${i})">
+                <img src="${t.img}" style="width:50px; height:50px; border-radius:8px; margin-right:15px;">
                 <div><div style="font-weight:bold;">${t.title}</div><div style="opacity:0.5; font-size:12px;">${t.artist}</div></div>
             </div>
         `).join('');
     }
 
     function closeArtist() { document.getElementById('artist-view').classList.remove('active'); }
-    function login(type) { localStorage.setItem('user_logged', 'true'); document.getElementById('auth-screen').style.display = 'none'; }
-    function logout() { localStorage.removeItem('user_logged'); location.reload(); }
 
     async function search(q) {
         const r = await fetch(`/api/search?q=${encodeURIComponent(q + " Official")}`);
         const d = await r.json(); playlist = d;
         document.getElementById('res').innerHTML = d.map((t, i) => `
-            <div style="display:flex; align-items:center; margin-bottom:12px;" onclick="play(${i})">
-                <img src="${t.img}" style="width:48px; height:48px; border-radius:6px; object-fit:cover; margin-right:12px;">
+            <div style="display:flex; align-items:center; margin-bottom:15px;" onclick="play(${i})">
+                <img src="${t.img}" style="width:55px; height:55px; border-radius:10px; object-fit:cover; margin-right:15px;">
                 <div style="overflow:hidden;"><div style="font-weight:bold; white-space:nowrap; text-overflow:ellipsis;">${t.title}</div><div style="opacity:0.5; font-size:12px;">${t.artist}</div></div>
             </div>
         `).join('');
@@ -198,10 +188,18 @@
         document.getElementById('m-txt').innerText = t.title;
         document.getElementById('f-title').innerText = t.title;
         document.getElementById('f-art').innerText = t.artist;
-        player.loadVideoById(t.id); player.playVideo();
+        
+        player.loadVideoById(t.id);
+        player.unMute();
+        player.playVideo();
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 
-    function toggle() { player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); }
+    function toggle() { 
+        if(player.getPlayerState() === 1) player.pauseVideo();
+        else player.playVideo();
+    }
+    
     function setFull(s) { document.getElementById('full').classList.toggle('active', s); }
     function tab(p, e) {
         document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
@@ -211,9 +209,10 @@
     }
 
     document.getElementById('s-input').onkeypress = (e) => { if(e.key === 'Enter') search(e.target.value); };
-    window.onload = () => { if(localStorage.getItem('user_logged')) document.getElementById('auth-screen').style.display = 'none'; renderArtists(); };
     function next() { if(cur < playlist.length - 1) play(cur + 1); }
     function prev() { if(cur > 0) play(cur - 1); }
+
+    window.onload = renderArtists;
 </script>
 </body>
 </html>
