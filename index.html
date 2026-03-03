@@ -3,125 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Fix Max</title>
+    <title>Notti Music 2.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --accent: #0088cc; --bg: #000; }
-        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; }
-        
-        .search-box { position: sticky; top: 10px; z-index: 100; margin-bottom: 20px; }
-        #searchInput { width: 100%; padding: 15px; border-radius: 12px; border: none; background: #1a1a1a; color: white; font-size: 16px; }
+        :root { --accent: #ff2d55; --bg: #000; --card: #1c1c1e; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }
 
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .card { background: #111; border-radius: 12px; overflow: hidden; border: 1px solid #222; position: relative; }
-        .card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: #222; display: block; }
-        .card-info { padding: 8px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Поиск */
+        .header { position: sticky; top: 0; background: var(--bg); z-index: 100; padding-bottom: 15px; }
+        #searchInput { width: 100%; padding: 14px 20px; border-radius: 12px; border: none; background: var(--card); color: white; font-size: 17px; font-weight: 500; }
 
-        /* Плеер снизу */
-        .player-bar { position: fixed; bottom: 15px; left: 10px; right: 10px; height: 65px; background: rgba(30,30,30,0.95); backdrop-filter: blur(10px); border-radius: 15px; display: none; align-items: center; padding: 0 12px; border: 1px solid #333; z-index: 1000; }
-        .player-bar img { width: 45px; height: 45px; border-radius: 8px; margin-right: 12px; }
-        .play-btn { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; margin-left: auto; cursor: pointer; }
-        
-        #yt-player { position: absolute; top: -1000px; left: -1000px; }
-        .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        /* Сетка треков */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        .track-card { background: var(--card); border-radius: 14px; overflow: hidden; transition: transform 0.2s; }
+        .track-card:active { transform: scale(0.96); }
+        .track-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
+        .track-info { padding: 10px; }
+        .track-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-artist { font-size: 12px; color: #8e8e93; margin-top: 3px; }
+
+        /* Плеер (Apple Style) */
+        #player-ui { position: fixed; bottom: 20px; left: 15px; right: 15px; height: 64px; background: rgba(44, 44, 46, 0.95); backdrop-filter: blur(20px); border-radius: 14px; display: none; align-items: center; padding: 0 15px; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        #player-ui img { width: 44px; height: 44px; border-radius: 6px; margin-right: 12px; }
+        .p-text { flex: 1; overflow: hidden; }
+        .p-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .p-controls { display: flex; align-items: center; gap: 20px; }
+        .p-play { font-size: 24px; color: white; width: 30px; text-align: center; }
+
+        /* Скрытый движок */
+        #yt-engine { position: absolute; top: -1000px; opacity: 0; }
+        .loading { text-align: center; padding: 40px; color: var(--accent); display: none; }
     </style>
 </head>
 <body>
 
-<div id="yt-player"></div>
-<div id="loader" class="loading-overlay"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+<div id="yt-engine"></div>
 
-<div class="search-box">
-    <input type="text" id="searchInput" placeholder="Введите имя артиста...">
+<div class="header">
+    <h1 style="font-size: 34px; margin: 0 0 15px;">Поиск</h1>
+    <input type="text" id="searchInput" placeholder="Артист, песня или альбом">
 </div>
 
-<div id="grid" class="grid">
-    </div>
+<div id="loader" class="loading"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+<div id="grid" class="grid"></div>
 
-<div class="player-bar" id="player">
+<div id="player-ui">
     <img id="p-img" src="">
-    <div style="flex:1; overflow:hidden;">
-        <div id="p-title" style="font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Песня</div>
-        <div id="p-artist" style="font-size:11px; opacity:0.6;">Артист</div>
+    <div class="p-text">
+        <div id="p-name" class="p-title">Название</div>
+        <div style="font-size: 12px; color: #8e8e93;">Сейчас играет</div>
     </div>
-    <div class="play-btn" onclick="togglePlay()"><i id="p-icon" class="fas fa-play"></i></div>
+    <div class="p-controls">
+        <div onclick="togglePlay()"><i id="p-icon" class="fas fa-play p-play"></i></div>
+    </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    const YT_KEY = 'AIzaSyBYuWcCFDO-FPZXhK-AnIxw7nLGeGzwSHw';
-    let ytPlayer, isPlaying = false;
+    const API_KEY = 'AIzaSyBYuWcCFDO-FPZXhK-AnIxw7nLGeGzwSHw';
+    let player, isPlaying = false;
 
-    // Инициализация плеера YouTube
+    // Инициализация YouTube
     function onYouTubeIframeAPIReady() {
-        ytPlayer = new YT.Player('yt-player', {
-            height: '1', width: '1',
-            playerVars: { 'autoplay': 0, 'controls': 0, 'disablekb': 1 },
-            events: { 'onStateChange': (e) => { if(e.data === 1) isPlaying = true; if(e.data === 2) isPlaying = false; updateIcon(); } }
+        player = new YT.Player('yt-engine', {
+            height: '0', width: '0',
+            events: { 
+                'onStateChange': (e) => {
+                    isPlaying = (e.data === YT.PlayerState.PLAYING);
+                    document.getElementById('p-icon').className = isPlaying ? 'fas fa-pause p-play' : 'fas fa-play p-play';
+                },
+                'onError': () => alert('Ошибка воспроизведения. Попробуйте другой трек.')
+            }
         });
     }
 
-    async function search(query) {
-        if(!query) return;
-        document.getElementById('loader').style.display = 'flex';
+    async function search(q) {
+        if (!q) return;
+        document.getElementById('loader').style.display = 'block';
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
 
         try {
-            // Ищем видео сразу на YouTube (это гарантирует наличие обложки и самой музыки)
-            const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' audio')}&key=${YT_KEY}&type=video&maxResults=10`);
+            const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q + ' music')}&key=${API_KEY}&type=video&maxResults=12`);
             const data = await res.json();
+            
+            data.items.forEach(item => {
+                const vid = item.id.videoId;
+                const title = item.snippet.title;
+                const thumb = item.snippet.thumbnails.high.url;
+                const channel = item.snippet.channelTitle;
 
-            if(data.items) {
-                data.items.forEach(item => {
-                    const videoId = item.id.videoId;
-                    const title = item.snippet.title.replace(/&quot;/g, '"');
-                    const cover = item.snippet.thumbnails.high.url;
-                    const artist = item.snippet.channelTitle;
-
-                    grid.innerHTML += `
-                        <div class="card" onclick="playMusic('${videoId}', '${title}', '${artist}', '${cover}')">
-                            <img src="${cover}">
-                            <div class="card-info">${title}</div>
-                        </div>`;
-                });
-            }
-        } catch (e) { alert("Ошибка поиска!"); }
+                grid.innerHTML += `
+                    <div class="track-card" onclick="playMusic('${vid}', '${title.replace(/'/g, "")}', '${thumb}')">
+                        <img src="${thumb}">
+                        <div class="track-info">
+                            <div class="track-title">${title}</div>
+                            <div class="track-artist">${channel}</div>
+                        </div>
+                    </div>`;
+            });
+        } catch (e) { alert('Лимит поиска исчерпан или нет сети'); }
         document.getElementById('loader').style.display = 'none';
     }
 
-    function playMusic(id, title, artist, cover) {
-        document.getElementById('player').style.display = 'flex';
-        document.getElementById('p-title').innerText = title;
-        document.getElementById('p-artist').innerText = artist;
-        document.getElementById('p-img').src = cover;
-
-        ytPlayer.loadVideoById(id);
-        isPlaying = true;
-        updateIcon();
+    function playMusic(id, title, img) {
+        document.getElementById('player-ui').style.display = 'flex';
+        document.getElementById('p-name').innerText = title;
+        document.getElementById('p-img').src = img;
+        
+        player.loadVideoById(id);
         tg.HapticFeedback.impactOccurred('medium');
     }
 
     function togglePlay() {
-        if (isPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
-        isPlaying = !isPlaying;
-        updateIcon();
-    }
-
-    function updateIcon() {
-        document.getElementById('p-icon').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+        if (isPlaying) player.pauseVideo(); else player.playVideo();
     }
 
     document.getElementById('searchInput').onkeypress = (e) => {
-        if(e.key === 'Enter') { search(e.target.value); e.target.blur(); }
+        if (e.key === 'Enter') { search(e.target.value); e.target.blur(); }
     };
 
-    window.onload = () => {
-        tg.expand();
-        search('Pop Music 2024'); // Начальный экран
-    };
+    window.onload = () => { tg.expand(); search('Hits 2024'); };
 </script>
 </body>
 </html>
