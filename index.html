@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Proxy Fix</title>
+    <title>Notti Music Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -14,83 +14,87 @@
         body, html { background: var(--bg); color: white; margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: -apple-system, sans-serif; }
         
         .app { display: flex; flex-direction: column; height: 100vh; padding: 20px; }
-        .search-container { margin-bottom: 20px; }
-        #scInput { width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; }
-        
-        #list { flex: 1; overflow-y: auto; padding-bottom: 100px; }
+        .search-box { margin-bottom: 20px; position: sticky; top: 0; z-index: 10; background: var(--bg); }
+        #scInput { width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; transition: 0.3s; }
+        #scInput:focus { border-color: var(--accent); }
+
+        #list { flex: 1; overflow-y: auto; padding-bottom: 80px; }
         .track-item { display: flex; align-items: center; padding: 12px; background: #0c0c0c; border-radius: 14px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
         .track-item img { width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; background: #222; }
         .track-info { flex: 1; overflow: hidden; }
         .t-name { font-weight: bold; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
         .t-artist { opacity: 0.5; font-size: 12px; }
 
-        /* Плеер */
         .full-player { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; padding: 40px 30px; }
-        .full-player.active { display: flex; }
-        .fp-cover img { width: 100%; aspect-ratio: 1/1; border-radius: 20px; object-fit: cover; margin: 20px 0; }
+        .full-player.active { display: flex; animation: slide 0.3s ease; }
+        .fp-cover img { width: 100%; aspect-ratio: 1/1; border-radius: 20px; object-fit: cover; margin: 20px 0; background: #111; }
+        
         .prog-bg { width: 100%; height: 4px; background: #222; border-radius: 2px; margin: 30px 0; }
-        #prog-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.2s; }
+        #prog-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.1s; }
+        
         .controls { display: flex; align-items: center; justify-content: space-around; }
-        .play-btn { width: 70px; height: 70px; background: #fff; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+        .play-btn { width: 75px; height: 75px; background: #fff; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; }
 
-        /* Скрытый виджет */
-        #sc-wrapper { position: absolute; top: -1000px; opacity: 0; }
+        #sc-frame { position: absolute; top: -1000px; opacity: 0; }
+        @keyframes slide { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div id="sc-wrapper">
-    <iframe id="sc-player" src="https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/293" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay"></iframe>
-</div>
+<iframe id="sc-frame" src="https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/293"></iframe>
 
 <div class="app">
-    <h1 style="color: var(--accent);">Notti Music</h1>
-    <div class="search-container">
-        <input type="text" id="scInput" placeholder="Введите название...">
+    <h1 style="color: var(--accent); margin-bottom: 15px;">Notti Music</h1>
+    <div class="search-box">
+        <input type="text" id="scInput" placeholder="Вставьте ссылку на трек или название...">
     </div>
-    <div id="status" style="text-align:center; display:none; color:var(--accent); margin-bottom:10px;">Загрузка...</div>
-    <div id="list"></div>
+    <div id="list">
+        <p style="text-align:center; opacity:0.5; margin-top:50px;">Введите название и нажмите Enter</p>
+    </div>
 </div>
 
 <div class="full-player" id="ui">
     <div onclick="toggleUI(false)"><i class="fas fa-chevron-down" style="font-size:24px;"></i></div>
     <div class="fp-cover"><img id="f-img" src=""></div>
     <div style="text-align:center;">
-        <h2 id="f-title" style="margin:0; font-size:22px;"></h2>
+        <h2 id="f-title" style="margin:0; font-size:20px;"></h2>
         <p id="f-artist" style="opacity:0.5; margin:10px 0;"></p>
     </div>
     <div class="prog-bg"><div id="prog-fill"></div></div>
     <div class="controls">
-        <i class="fas fa-step-backward" style="font-size:24px;"></i>
-        <div class="play-btn" onclick="toggle()"><i id="p-icon" class="fas fa-play"></i></div>
-        <i class="fas fa-step-forward" style="font-size:24px;"></i>
+        <i class="fas fa-random" style="opacity:0.3;"></i>
+        <div class="play-btn" onclick="togglePlay()"><i id="p-icon" class="fas fa-play"></i></div>
+        <i class="fas fa-redo" style="opacity:0.3;"></i>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    const widget = SC.Widget('sc-player');
-    const cid = '1IzwHiVxAHeYKAMqN0IIGD3ZARgJy2kl';
-    const proxy = 'https://corsproxy.io/?'; // Прокси для обхода блокировок
+    const widget = SC.Widget('sc-frame');
+    const input = document.getElementById('scInput');
+    const list = document.getElementById('list');
+    
+    // Используем Client ID для поиска через альтернативный роут (публичный)
+    const CID = '1IzwHiVxAHeYKAMqN0IIGD3ZARgJy2kl';
 
-    async function search(q) {
-        if (!q) return;
-        const list = document.getElementById('list');
-        const status = document.getElementById('status');
-        status.style.display = 'block';
-        list.innerHTML = '';
-
+    async function handleSearch(q) {
+        if(!q) return;
+        list.innerHTML = '<p style="text-align:center;">Загрузка...</p>';
+        
         try {
-            // Запрос через прокси для обхода CORS
-            const target = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=15`;
-            const r = await fetch(proxy + encodeURIComponent(target));
-            const d = await r.json();
-            
-            if (!d.collection || d.collection.length === 0) {
-                list.innerHTML = '<p style="text-align:center;">Ничего не найдено</p>';
-            } else {
-                list.innerHTML = d.collection.map(t => `
-                    <div class="track-item" onclick="loadT('${t.permalink_url}', '${t.title.replace(/'/g, "")}', '${t.user.username}', '${(t.artwork_url || t.user.avatar_url || '').replace('large', 't500x500')}')">
+            // Если введена ссылка - играем сразу
+            if(q.includes('soundcloud.com')) {
+                loadTrack(q, "Трек по ссылке", "SoundCloud", "");
+                return;
+            }
+
+            // Поиск через API v2 с обработкой ошибок
+            const response = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${CID}&limit=10`);
+            const data = await response.json();
+
+            if (data.collection && data.collection.length > 0) {
+                list.innerHTML = data.collection.map(t => `
+                    <div class="track-item" onclick="loadTrack('${t.permalink_url}', '${t.title.replace(/'/g, "")}', '${t.user.username}', '${(t.artwork_url || t.user.avatar_url || '').replace('large', 't500x500')}')">
                         <img src="${t.artwork_url || t.user.avatar_url}">
                         <div class="track-info">
                             <div class="t-name">${t.title}</div>
@@ -99,42 +103,38 @@
                         <i class="fas fa-play-circle" style="color:var(--accent); font-size:20px;"></i>
                     </div>
                 `).join('');
+            } else {
+                list.innerHTML = '<p style="text-align:center;">Ничего не найдено</p>';
             }
         } catch (e) {
-            list.innerHTML = '<p style="text-align:center; color:red;">Ошибка сети. Попробуйте еще раз.</p>';
-        } finally {
-            status.style.display = 'none';
+            list.innerHTML = '<p style="text-align:center; color:red;">Ошибка. Вставьте прямую ссылку на трек SoundCloud.</p>';
         }
     }
 
-    function loadT(url, title, artist, img) {
+    function loadTrack(url, title, artist, img) {
         document.getElementById('f-title').innerText = title;
         document.getElementById('f-artist').innerText = artist;
-        document.getElementById('f-img').src = img;
+        document.getElementById('f-img').src = img || 'https://via.placeholder.com/300/111/fff?text=Notti';
         
-        widget.load(url, { auto_play: true });
+        widget.load(url, { auto_play: true, visual: false });
         toggleUI(true);
         tg.HapticFeedback.impactOccurred('medium');
     }
 
-    function toggle() { widget.toggle(); }
+    function togglePlay() { widget.toggle(); }
     function toggleUI(s) { document.getElementById('ui').classList.toggle('active', s); }
 
-    document.getElementById('scInput').onkeypress = (e) => {
-        if(e.key === 'Enter') { search(e.target.value); e.target.blur(); }
+    input.onkeypress = (e) => {
+        if(e.key === 'Enter') { handleSearch(e.target.value); e.target.blur(); }
     };
 
-    widget.bind(SC.Widget.Events.PLAY, () => {
-        document.getElementById('p-icon').className = 'fas fa-pause';
-    });
-    widget.bind(SC.Widget.Events.PAUSE, () => {
-        document.getElementById('p-icon').className = 'fas fa-play';
-    });
+    widget.bind(SC.Widget.Events.PLAY, () => { document.getElementById('p-icon').className = 'fas fa-pause'; });
+    widget.bind(SC.Widget.Events.PAUSE, () => { document.getElementById('p-icon').className = 'fas fa-play'; });
     widget.bind(SC.Widget.Events.PLAY_PROGRESS, (p) => {
         document.getElementById('prog-fill').style.width = (p.relativePosition * 100) + '%';
     });
 
-    window.onload = () => { tg.expand(); search('Pop Smoke'); };
+    window.onload = () => { tg.expand(); };
 </script>
 </body>
 </html>
