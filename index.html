@@ -12,16 +12,12 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { background-color: #000 !important; margin: 0; padding: 0; color: #fff; font-family: -apple-system, sans-serif; height: 100vh; overflow: hidden; }
 
-        /* ЭКРАН ВХОДА */
         #auth-screen { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .auth-btn { background: #fff; color: #000; padding: 16px 45px; border-radius: 35px; border: none; font-weight: 800; font-size: 16px; margin-top: 25px; cursor: pointer; transition: 0.2s; }
-        .auth-btn:active { transform: scale(0.95); }
-        .user-avatar { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 15px; display: none; }
+        .auth-btn { background: #fff; color: #000; padding: 16px 45px; border-radius: 35px; border: none; font-weight: 800; font-size: 16px; margin-top: 25px; cursor: pointer; }
 
         .page { display: none; height: 100vh; padding: 20px 20px 190px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
 
-        /* ЭЛЕМЕНТЫ ИНТЕРФЕЙСА */
         .wave-card { width: 100%; height: 110px; background: linear-gradient(135deg, #1db954, #004d1a); border-radius: 20px; display: flex; align-items: center; padding: 20px; margin-bottom: 20px; cursor: pointer; position: relative; overflow: hidden; }
         .wave-bg { position: absolute; right: -10px; bottom: -20px; font-size: 100px; color: rgba(255,255,255,0.05); transform: rotate(-10deg); }
 
@@ -33,15 +29,18 @@
         .track-card { background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid #222; }
         .track-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
 
-        /* ПЛЕЕР */
-        #full-player { position: fixed; top: 100%; left: 0; width: 100%; height: 100%; background: #000; z-index: 9000; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); padding: 40px 25px; display: flex; flex-direction: column; }
+        /* ПЛЕЕР С ФИКСОМ ЖЕСТОВ */
+        #full-player { 
+            position: fixed; top: 100%; left: 0; width: 100%; height: 100%; background: #000; 
+            z-index: 9000; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            padding: 40px 25px; display: flex; flex-direction: column;
+            touch-action: none; /* Запрещает системные жесты Telegram на этом элементе */
+        }
         #full-player.open { top: 0; }
         .fp-img { width: 85%; aspect-ratio: 1/1; border-radius: 20px; margin: 10px auto 20px; object-fit: cover; box-shadow: 0 10px 50px rgba(0,0,0,0.8); }
-
         .controls-area { margin-top: auto; padding-bottom: 95px; } 
 
-        /* ОЧЕРЕДЬ */
-        #queue-menu { position: absolute; bottom: -100%; left: 0; width: 100%; height: 75%; background: #121212; border-radius: 25px 25px 0 0; transition: 0.4s; z-index: 9500; padding: 25px; overflow-y: auto; border-top: 1px solid #333; }
+        #queue-menu { position: absolute; bottom: -100%; left: 0; width: 100%; height: 75%; background: #121212; border-radius: 25px 25px 0 0; transition: 0.4s; z-index: 9500; padding: 25px; overflow-y: auto; border-top: 1px solid #333; touch-action: pan-y; }
         #queue-menu.open { bottom: 0; }
         .queue-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; }
         .queue-item img { width: 45px; height: 45px; border-radius: 6px; margin-right: 15px; }
@@ -53,45 +52,40 @@
         .nav-item { color: var(--gray); text-align: center; font-size: 11px; }
         .nav-item.active { color: #fff; font-weight: bold; }
 
-        #yt-engine { position: absolute; top: -1000px; left: -1000px; pointer-events: none; }
+        /* Фоновый режим требует, чтобы плеер был "виден" системе */
+        #yt-engine { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
-    <img id="user-photo" class="user-avatar" src="">
-    <div id="welcome-text" style="font-size: 40px; color: var(--accent); font-weight: 900; letter-spacing: -1px;">Notti</div>
-    <div id="user-name" style="color: var(--gray); margin-top: 5px; font-size: 16px;">Музыкальный профиль</div>
-    <button class="auth-btn" onclick="login()">ВОЙТИ ЧЕРЕЗ TELEGRAM</button>
+    <div style="font-size: 50px; color: var(--accent); font-weight: 900; letter-spacing: -1px;">Notti</div>
+    <div id="user-name" style="color: var(--gray); margin-top: 5px; font-size: 16px;">Вход в профиль...</div>
+    <button class="auth-btn" onclick="login()">ВОЙТИ</button>
 </div>
 
 <div id="yt-engine"></div>
 
 <div id="page-home" class="page active">
-    <h2 style="margin-top:0;">Для тебя</h2>
+    <h2>Notti Music</h2>
     <div class="wave-card" onclick="startWave()">
-        <i class="fas fa-broadcast-tower" style="font-size:30px; z-index:2;"></i>
-        <div style="margin-left:15px; z-index:2;">
-            <div style="font-weight:900; font-size:19px;">Микс дня 2026</div>
-            <div style="font-size:11px; opacity:0.8;">Персональный алгоритм Notti</div>
+        <i class="fas fa-broadcast-tower" style="font-size:30px;"></i>
+        <div style="margin-left:15px;">
+            <div style="font-weight:900; font-size:19px;">Микс 2026</div>
+            <div style="font-size:11px; opacity:0.8;">Персонально для тебя</div>
         </div>
         <i class="fas fa-radio wave-bg"></i>
     </div>
-
-    <h3>Твоя история</h3>
+    <h3>История</h3>
     <div id="artists-list" class="artists-scroll"></div>
-
-    <h3 style="margin-top:25px;">Хиты РУ 2026</h3>
+    <h3>Хиты РУ 2026</h3>
     <div id="ru-hits" class="grid"></div>
-
-    <h3>Мировые тренды</h3>
+    <h3>Тренды</h3>
     <div id="home-grid" class="grid"></div>
 </div>
 
 <div id="page-search" class="page">
-    <div style="position: sticky; top:0; background:#000; padding: 10px 0; z-index:100;">
-        <input type="text" id="searchInput" style="width:100%; padding:16px; border-radius:14px; background:#1a1a1a; color:#fff; border:1px solid #333; outline:none;" placeholder="Трек, артист или альбом...">
-    </div>
+    <input type="text" id="searchInput" style="width:100%; padding:16px; border-radius:14px; background:#1a1a1a; color:#fff; border:1px solid #333; outline:none;" placeholder="Поиск музыки...">
     <div id="grid" class="grid" style="margin-top:20px;"></div>
 </div>
 
@@ -101,26 +95,22 @@
 </div>
 
 <div id="full-player">
-    <div id="swipe-down-bar" style="width:100%; height:40px; display:flex; justify-content:center; align-items:center;">
+    <div style="width:100%; height:40px; display:flex; justify-content:center; align-items:center;">
         <div style="width:45px; height:5px; background:#444; border-radius:10px;"></div>
     </div>
-    
     <img id="fp-img" class="fp-img" src="">
-    
     <div class="controls-area">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="overflow:hidden; flex:1;">
                 <div id="fp-title" style="font-size:24px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-                <div id="fp-artist" style="color:var(--gray); font-size:17px; margin-top:2px;"></div>
+                <div id="fp-artist" style="color:var(--gray); font-size:17px;"></div>
             </div>
-            <i class="fas fa-indent" style="font-size:22px; color:var(--accent); margin-left:20px;" onclick="toggleQueue()"></i>
+            <i class="fas fa-list" style="font-size:22px; color:var(--accent);" onclick="toggleQueue()"></i>
         </div>
-
         <input type="range" id="seek" style="width:100%; accent-color:var(--accent); margin-top:35px;" value="0">
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--gray); margin-top:8px; font-variant-numeric: tabular-nums;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--gray); margin-top:8px;">
             <span id="curT">0:00</span><span id="durT">0:00</span>
         </div>
-
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:35px;">
             <i class="fas fa-random" style="font-size:20px; color:var(--gray);"></i>
             <i class="fas fa-step-backward" style="font-size:32px;" onclick="playPrev()"></i>
@@ -131,11 +121,10 @@
             <i id="fp-like-main" class="far fa-heart" style="font-size:26px;" onclick="toggleCurrentFav()"></i>
         </div>
     </div>
-
     <div id="queue-menu">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0;">Очередь</h2>
-            <i class="fas fa-chevron-down" style="font-size:20px;" onclick="toggleQueue()"></i>
+            <h2>Очередь</h2>
+            <i class="fas fa-times" onclick="toggleQueue()"></i>
         </div>
         <div id="queue-list"></div>
     </div>
@@ -144,31 +133,20 @@
 <div id="mini-player" onclick="openFull()">
     <img id="m-img" src="">
     <div style="flex:1; overflow:hidden;"><div id="m-title" style="font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div></div>
-    <i id="m-play" class="fas fa-play" style="padding:15px; font-size:18px;" onclick="event.stopPropagation(); togglePlay()"></i>
+    <i id="m-play" class="fas fa-play" style="padding:15px;" onclick="event.stopPropagation(); togglePlay()"></i>
 </div>
 
 <div class="nav-bar">
-    <div class="nav-item active" onclick="showP('home', this)"><i class="fas fa-home" style="font-size:20px;"></i><br>Главная</div>
-    <div class="nav-item" onclick="showP('search', this)"><i class="fas fa-search" style="font-size:20px;"></i><br>Поиск</div>
-    <div class="nav-item" onclick="showP('favs', this)"><i class="fas fa-heart" style="font-size:20px;"></i><br>Лайки</div>
+    <div class="nav-item active" onclick="showP('home', this)"><i class="fas fa-home"></i><br>Главная</div>
+    <div class="nav-item" onclick="showP('search', this)"><i class="fas fa-search"></i><br>Поиск</div>
+    <div class="nav-item" onclick="showP('favs', this)"><i class="fas fa-heart"></i><br>Лайки</div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
     const KEY = 'AIzaSyBYuWcCFDO-FPZXhK-AnIxw7nLGeGzwSHw';
     
-    // ИНИЦИАЛИЗАЦИЯ ПОЛЬЗОВАТЕЛЯ
-    let userId = 'guest';
-    if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        userId = tg.initDataUnsafe.user.id;
-        document.getElementById('user-name').innerText = tg.initDataUnsafe.user.first_name;
-        if(tg.initDataUnsafe.user.photo_url) {
-            const img = document.getElementById('user-photo');
-            img.src = tg.initDataUnsafe.user.photo_url;
-            img.style.display = 'block';
-        }
-    }
-
+    let userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 'guest';
     const sKeyFavs = `notti_favs_${userId}`, sKeyHist = `notti_hist_${userId}`;
     let player, isPlaying = false, cur = null;
     let favs = JSON.parse(localStorage.getItem(sKeyFavs) || '[]');
@@ -176,21 +154,19 @@
     let queue = [], historyQueue = [];
 
     function login() { 
-        document.getElementById('auth-screen').style.opacity = '0';
-        setTimeout(() => document.getElementById('auth-screen').style.display = 'none', 400);
+        document.getElementById('auth-screen').style.display = 'none'; 
         tg.expand();
-        tg.HapticFeedback.notificationOccurred('success');
         search('Хиты 2026 Россия', 'ru-hits');
-        search('Global Top 50 2026', 'home-grid');
+        search('Popular Tracks 2026', 'home-grid');
     }
 
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-engine', {
-            playerVars: { 'autoplay': 1, 'playsinline': 1, 'origin': window.location.origin },
+            playerVars: { 'autoplay': 1, 'playsinline': 1, 'controls': 0, 'disablekb': 1 },
             events: { 
                 'onStateChange': (e) => { 
-                    if(e.data == YT.PlayerState.ENDED) playNext();
-                    isPlaying = (e.data == YT.PlayerState.PLAYING);
+                    if(e.data == 0) playNext();
+                    isPlaying = (e.data == 1);
                     updateBtns();
                 },
                 'onReady': () => setInterval(updateUI, 1000)
@@ -199,41 +175,36 @@
     }
 
     async function search(q, tid) {
-        try {
-            const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q + ' official audio')}&key=${KEY}&type=video&videoCategoryId=10&maxResults=15`);
-            const data = await res.json();
-            const g = document.getElementById(tid); if(!g) return;
-            g.innerHTML = '';
-            data.items.forEach(i => {
-                const t = { id: i.id.videoId, title: i.snippet.title, art: i.snippet.channelTitle, img: i.snippet.thumbnails.high.url };
-                g.innerHTML += `<div class="track-card" onclick="play('${t.id}','${t.title.replace(/'/g,"")}','${t.art}','${t.img}')">
-                    <img src="${t.img}"><div style="padding:10px; font-size:12px; font-weight:600; line-height:1.2; height:42px; overflow:hidden;">${t.title}</div></div>`;
-            });
-            if(tid === 'grid') {
-                queue = data.items.map(i => ({id: i.id.videoId, title: i.snippet.title, art: i.snippet.channelTitle, img: i.snippet.thumbnails.high.url}));
-                renderQueue();
-            }
-        } catch(e) { console.error("Search Fail"); }
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${KEY}&type=video&videoCategoryId=10&maxResults=15`);
+        const data = await res.json();
+        const g = document.getElementById(tid); if(!g) return;
+        g.innerHTML = '';
+        data.items.forEach(i => {
+            const t = { id: i.id.videoId, title: i.snippet.title, art: i.snippet.channelTitle, img: i.snippet.thumbnails.high.url };
+            g.innerHTML += `<div class="track-card" onclick="play('${t.id}','${t.title.replace(/'/g,"")}','${t.art}','${t.img}')">
+                <img src="${t.img}"><div style="padding:10px; font-size:12px;">${t.title}</div></div>`;
+        });
+        if(tid === 'grid') {
+            queue = data.items.map(i => ({id: i.id.videoId, title: i.snippet.title, art: i.snippet.channelTitle, img: i.snippet.thumbnails.high.url}));
+            renderQueue();
+        }
     }
 
     function play(id, title, art, img) {
-        if(cur && cur.id !== id) historyQueue.push(cur);
+        if(cur) historyQueue.push(cur);
         cur = {id, title, art, img};
-        
         document.getElementById('mini-player').style.display = 'flex';
         document.getElementById('m-title').innerText = title;
         document.getElementById('m-img').src = img;
         document.getElementById('fp-title').innerText = title;
         document.getElementById('fp-artist').innerText = art;
         document.getElementById('fp-img').src = img;
-        
         player.loadVideoById(id);
         saveHistory(art, img);
         updateLikeBtn();
     }
 
     function togglePlay() { isPlaying ? player.pauseVideo() : player.playVideo(); }
-
     function updateBtns() {
         const icon = isPlaying ? 'fa-pause' : 'fa-play';
         document.getElementById('m-play').className = 'fas ' + icon;
@@ -245,39 +216,31 @@
             let next = queue.shift();
             play(next.id, next.title, next.art, next.img);
             renderQueue();
-        } else {
-            search(cur ? cur.art + " official" : "Hits 2026", 'home-grid');
-        }
+        } else { search(cur ? cur.art + " mix" : "2026", 'home-grid'); }
         tg.HapticFeedback.impactOccurred('medium');
     }
 
     function playPrev() {
-        if(historyQueue.length > 0) {
-            let prev = historyQueue.pop();
-            play(prev.id, prev.title, prev.art, prev.img);
-        } else {
-            player.seekTo(0);
-        }
-        tg.HapticFeedback.impactOccurred('soft');
+        if(historyQueue.length > 0) play(historyQueue.pop().id, "...", "...", "...");
+        else player.seekTo(0);
     }
 
     function updateUI() {
         if(player && player.getCurrentTime) {
             const c = player.getCurrentTime(), d = player.getDuration();
-            const sk = document.getElementById('seek');
-            sk.max = d || 100; sk.value = c;
+            document.getElementById('seek').max = d || 100;
+            document.getElementById('seek').value = c;
             document.getElementById('curT').innerText = fmt(c);
             document.getElementById('durT').innerText = fmt(d);
         }
     }
 
     function fmt(s) { let m=Math.floor(s/60), r=Math.floor(s%60); return m+":"+(r<10?'0'+r:r); }
-    
+
     function saveHistory(name, img) {
         history = history.filter(a => a.name !== name);
         history.unshift({name, img});
-        if(history.length > 15) history.pop();
-        localStorage.setItem(sKeyHist, JSON.stringify(history));
+        localStorage.setItem(sKeyHist, JSON.stringify(history.slice(0,15)));
         renderArtists();
     }
 
@@ -285,18 +248,8 @@
         const l = document.getElementById('artists-list'); if(!l) return;
         l.innerHTML = '';
         history.forEach(a => {
-            l.innerHTML += `<div class="artist-item" onclick="search('${a.name}','grid'); showP('search', document.querySelectorAll('.nav-item')[1])">
-                <img src="${a.img}"><div class="artist-name">${a.name}</div></div>`;
+            l.innerHTML += `<div class="artist-item" onclick="search('${a.name}','grid'); showP('search', document.querySelectorAll('.nav-item')[1])"><img src="${a.img}"><div class="artist-name">${a.name}</div></div>`;
         });
-    }
-
-    function toggleCurrentFav() {
-        if(!cur) return;
-        const idx = favs.findIndex(f => f.id === cur.id);
-        if(idx > -1) favs.splice(idx,1); else favs.push(cur);
-        localStorage.setItem(sKeyFavs, JSON.stringify(favs));
-        updateLikeBtn();
-        tg.HapticFeedback.impactOccurred('light');
     }
 
     function updateLikeBtn() {
@@ -306,58 +259,65 @@
         btn.style.color = isF ? 'var(--accent)' : '#fff';
     }
 
+    function toggleCurrentFav() {
+        if(!cur) return;
+        const idx = favs.findIndex(f => f.id === cur.id);
+        if(idx > -1) favs.splice(idx,1); else favs.push(cur);
+        localStorage.setItem(sKeyFavs, JSON.stringify(favs));
+        updateLikeBtn();
+    }
+
     function renderQueue() {
         const ql = document.getElementById('queue-list'); ql.innerHTML = '';
         queue.forEach((t, i) => {
             ql.innerHTML += `<div class="queue-item" onclick="play('${t.id}','${t.title}','${t.art}','${t.img}'); queue.splice(${i},1); renderQueue(); toggleQueue();">
-                <img src="${t.img}"><div><div style="font-size:14px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:200px;">${t.title}</div><div style="font-size:11px; color:var(--gray);">${t.art}</div></div>
-            </div>`;
+                <img src="${t.img}"><div><div style="font-size:14px; font-weight:bold;">${t.title}</div></div></div>`;
         });
     }
 
     function toggleQueue() { document.getElementById('queue-menu').classList.toggle('open'); }
 
-    // ЖЕСТЫ
+    // ФИКС ЖЕСТОВ ДЛЯ TELEGRAM
     let startX = 0, startY = 0;
-    document.getElementById('full-player').addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive:true});
-    document.getElementById('full-player').addEventListener('touchend', e => {
+    const fp = document.getElementById('full-player');
+
+    fp.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, {passive: false});
+
+    fp.addEventListener('touchmove', e => {
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        // Если двигаем пальцем, предотвращаем закрытие веб-аппа
+        if (Math.abs(dy) > 5 || Math.abs(dx) > 5) {
+            e.preventDefault(); 
+        }
+    }, {passive: false});
+
+    fp.addEventListener('touchend', e => {
         let dx = e.changedTouches[0].clientX - startX;
         let dy = e.changedTouches[0].clientY - startY;
         if(Math.abs(dx) > Math.abs(dy)) {
-            if(Math.abs(dx) > 100) dx > 0 ? playPrev() : playNext();
+            if(Math.abs(dx) > 80) dx > 0 ? playPrev() : playNext();
         } else {
-            if(dy > 150) closeFull();
+            if(dy > 100) closeFull();
         }
-    }, {passive:true});
+    }, {passive: false});
 
-    function openFull() { document.getElementById('full-player').classList.add('open'); }
-    function closeFull() { document.getElementById('full-player').classList.remove('open'); document.getElementById('queue-menu').classList.remove('open'); }
+    function openFull() { fp.classList.add('open'); }
+    function closeFull() { fp.classList.remove('open'); }
 
     function showP(p, el) {
         document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
         document.getElementById('page-'+p).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
         el.classList.add('active');
-        if(p==='favs') renderFavs();
-    }
-
-    function renderFavs() {
-        const g = document.getElementById('fav-grid'); g.innerHTML = '';
-        favs.forEach(t => {
-            g.innerHTML += `<div class="track-card" onclick="play('${t.id}','${t.title}','${t.art}','${t.img}')">
-                <img src="${t.img}"><div style="padding:10px; font-size:12px; font-weight:600; line-height:1.2; height:42px; overflow:hidden;">${t.title}</div></div>`;
-        });
     }
 
     document.getElementById('seek').oninput = function() { player.seekTo(this.value); };
     document.getElementById('searchInput').onkeypress = (e) => { if(e.key==='Enter') search(e.target.value, 'grid'); };
-    
-    window.onload = () => { 
-        renderArtists();
-        if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            // Если данные есть, можно сразу прогрузить что-то в фоне
-        }
-    };
+    window.onload = renderArtists;
 </script>
 </body>
-</html>
+</html>>
