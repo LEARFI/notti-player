@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Premium</title>
+    <title>Notti Music Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -11,256 +11,201 @@
     <style>
         :root {
             --accent: #1DB954;
-            --bg: #000;
+            --bg: #000000;
             --panel: #121212;
-            --card: #181818;
-            --text-dim: #b3b3b3;
+            --safe-bottom: env(safe-area-inset-bottom);
         }
 
         body {
             background-color: var(--bg);
             color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, system-ui, sans-serif;
             margin: 0;
-            display: flex;
             height: 100vh;
             overflow: hidden;
-        }
-
-        /* --- Сайдбар для ПК --- */
-        .sidebar {
-            width: 260px;
-            background: #000;
-            padding: 20px;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #222;
         }
 
-        .sidebar h2 { color: var(--accent); margin-bottom: 30px; padding-left: 10px; }
-
-        .nav-group { margin-bottom: 30px; }
-        .nav-label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 10px; }
+        /* --- КОНТЕНТ --- */
+        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 160px; }
         
-        .nav-item {
-            padding: 12px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: var(--text-dim);
-            font-weight: 500;
-        }
-        .nav-item:hover, .nav-item.active { background: #282828; color: white; }
+        .horizontal-scroll { display: flex; overflow-x: auto; gap: 15px; scrollbar-width: none; padding-bottom: 10px; }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
 
-        /* --- Основной контент --- */
-        .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 25px;
-            padding-bottom: 120px;
-        }
+        .artist-card { min-width: 110px; text-align: center; cursor: pointer; }
+        .artist-card img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid #222; }
 
-        h3 { margin: 30px 0 15px; font-size: 22px; font-weight: 800; }
+        .mix-card { min-width: 150px; background: var(--panel); padding: 12px; border-radius: 12px; cursor: pointer; }
+        .mix-card img { width: 100%; border-radius: 8px; margin-bottom: 10px; }
 
-        /* Горизонтальные ленты */
-        .scroll-row {
-            display: flex;
-            gap: 15px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            padding-bottom: 10px;
-        }
-        .scroll-row::-webkit-scrollbar { display: none; }
-
-        /* Карточки исполнителей */
-        .artist-circle {
-            min-width: 140px;
-            text-align: center;
-            cursor: pointer;
-        }
-        .artist-circle img {
-            width: 130px; height: 130px;
-            border-radius: 50%; object-fit: cover;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            margin-bottom: 10px;
-            transition: 0.3s;
-        }
-        .artist-circle:hover img { transform: scale(1.05); }
-
-        /* Карточки Миксов/Плейлистов */
-        .mix-card {
-            min-width: 160px;
-            background: var(--card);
-            padding: 15px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .mix-card:hover { background: #282828; }
-        .mix-card img { width: 100%; aspect-ratio: 1/1; border-radius: 8px; margin-bottom: 12px; }
-        .mix-card .title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-        .mix-card .subtitle { color: var(--text-dim); font-size: 12px; }
-
-        /* Плеер */
-        .player-bar {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: #121212; border-top: 1px solid #222;
-            padding: 15px 25px calc(15px + env(safe-area-inset-bottom));
+        /* --- МИНИ-ПЛЕЕР --- */
+        .mini-player {
+            position: fixed; bottom: 80px; left: 10px; right: 10px;
+            background: rgba(25, 25, 25, 0.95); backdrop-filter: blur(15px);
+            border-radius: 12px; padding: 10px 15px;
             display: flex; align-items: center; justify-content: space-between;
-            z-index: 1000;
+            z-index: 1000; transition: 0.3s; border: 1px solid rgba(255,255,255,0.1);
+            display: none;
         }
+        .mini-player img { width: 40px; height: 40px; border-radius: 6px; margin-right: 12px; }
 
-        @media (max-width: 768px) {
-            .sidebar { display: none; }
-            .content { padding: 15px; }
-            .artist-circle { min-width: 100px; }
-            .artist-circle img { width: 90px; height: 90px; }
+        /* --- КРУПНЫЙ ПЛЕЕР (FULLSCREEN) --- */
+        .full-player {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, #222, #000);
+            z-index: 9999; transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 1, 0.23, 1);
+            display: flex; flex-direction: column; padding: 40px 30px;
+            align-items: center; text-align: center;
         }
+        .full-player.active { transform: translateY(0); }
 
-        #yt-player { position: absolute; visibility: hidden; }
+        .close-btn { position: absolute; top: 50px; left: 25px; font-size: 24px; opacity: 0.5; }
+        
+        .fp-img-container { width: 80vw; max-width: 350px; margin: 60px 0 40px; }
+        .fp-img { 
+            width: 100%; aspect-ratio: 1/1; border-radius: 20px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7); transition: 0.4s;
+            transform: scale(0.9);
+        }
+        .fp-img.playing { transform: scale(1); }
+
+        .fp-info { width: 100%; margin-bottom: 30px; }
+        .fp-title { font-size: 24px; font-weight: 800; margin-bottom: 5px; }
+        .fp-artist { font-size: 18px; opacity: 0.6; }
+
+        .fp-controls { display: flex; align-items: center; gap: 40px; margin-top: 40px; }
+        .fp-play-btn { background: white; color: black; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+
+        /* --- НАВИГАЦИЯ --- */
+        nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #000; display: flex; justify-content: space-around;
+            padding: 15px 0 calc(15px + var(--safe-bottom)); border-top: 1px solid #111;
+        }
+        nav div { font-size: 12px; opacity: 0.5; cursor: pointer; }
+        nav div.active { opacity: 1; color: var(--accent); }
+        nav i { display: block; font-size: 20px; margin-bottom: 4px; }
+
+        #yt-player { position: absolute; visibility: hidden; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <h2>Notti Premium</h2>
-    
-    <div class="nav-group">
-        <div class="nav-item active" onclick="showPage('home')"><i class="fas fa-home"></i> Главная</div>
-        <div class="nav-item" onclick="showPage('search')"><i class="fas fa-search"></i> Поиск</div>
-        <div class="nav-item" onclick="showPage('fav')"><i class="fas fa-heart"></i> Избранное</div>
-    </div>
-
-    <div class="nav-label">Библиотека</div>
-    <div class="nav-group">
-        <div class="nav-item"><i class="fas fa-compact-disc"></i> Альбомы</div>
-        <div class="nav-item"><i class="fas fa-users"></i> Исполнители</div>
-        <div class="nav-item"><i class="fas fa-list"></i> Плейлисты</div>
-    </div>
-
-    <div class="nav-label">Утилиты</div>
-    <div class="nav-group">
-        <div class="nav-item" onclick="showPage('settings')"><i class="fas fa-cog"></i> Настройки</div>
-    </div>
-</div>
+<div id="yt-player"></div>
 
 <div class="content">
-    <div id="yt-player"></div>
-
-    <div id="view-home">
-        <h3>Твои миксы</h3>
-        <div class="scroll-row">
-            <div class="mix-card" onclick="playMix('Микс дня')">
-                <img src="https://i1.sndcdn.com/artworks-000494452026-v99486-t500x500.jpg">
-                <div class="title">Микс дня</div>
-                <div class="subtitle">Платина, OG Buda...</div>
+    <div id="page-home">
+        <h2>Главная</h2>
+        <div class="horizontal-scroll">
+            <div class="mix-card" onclick="search('Lofi Beats')">
+                <img src="https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg">
+                <b>Lo-fi микс</b>
             </div>
-            <div class="mix-card" onclick="playMix('Энергия')">
-                <img src="https://i.pinimg.com/736x/80/e7/80/80e780650949d9709d7e39956637e6f8.jpg">
-                <div class="title">Энергия</div>
-                <div class="subtitle">Зарядись на максимум</div>
-            </div>
-            <div class="mix-card" onclick="playMix('Ночные дороги')">
-                <img src="https://i.pinimg.com/736x/8a/80/7e/8a807ec1852033c706c9e0487002b115.jpg">
-                <div class="title">Ночные дороги</div>
-                <div class="subtitle">Атмосферный фон</div>
+            <div class="mix-card" onclick="search('Phonk 2024')">
+                <img src="https://i.ytimg.com/vi/H6U6S6Tz-YI/hqdefault.jpg">
+                <b>Phonk Energy</b>
             </div>
         </div>
 
-        <h3>Лучшие исполнители</h3>
-        <div class="scroll-row" id="artist-row">
+        <h2>Артисты</h2>
+        <div class="horizontal-scroll">
+            <div class="artist-card" onclick="search('Платина')">
+                <img src="https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512">
+                <p>Платина</p>
             </div>
-
-        <h3>Плейлисты для тебя</h3>
-        <div class="scroll-row">
-            <div class="mix-card" onclick="search('Russian Rap')">
-                <img src="https://i.pinimg.com/736x/6f/90/9e/6f909e702951b3f945398642337d121c.jpg">
-                <div class="title">Хип-хоп</div>
-            </div>
-            <div class="mix-card" onclick="search('Phonk')">
-                <img src="https://i.pinimg.com/736x/43/61/8b/43618b67f14b300305a468d601b63004.jpg">
-                <div class="title">Фонк</div>
-            </div>
-            <div class="mix-card" onclick="search('Lofi')">
-                <img src="https://i.pinimg.com/736x/8d/2a/3a/8d2a3a5f98888b150c2687c4f1981882.jpg">
-                <div class="title">Lo-fi</div>
+            <div class="artist-card" onclick="search('OG Buda')">
+                <img src="https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98">
+                <p>OG Buda</p>
             </div>
         </div>
     </div>
-
-    <div id="view-search" style="display:none;">
-        <input type="text" id="s-input" placeholder="Треки, альбомы..." style="width:100%; background:#222; border:none; padding:15px; border-radius:10px; color:white;">
-        <div id="s-results" style="margin-top:20px;"></div>
+    
+    <div id="page-search" style="display:none;">
+        <input type="text" id="main-search" placeholder="Поиск музыки..." style="width:100%; padding:15px; background:#1a1a1a; border:none; border-radius:12px; color:white; font-size:16px; outline:none;">
+        <div id="results" style="margin-top:20px;"></div>
     </div>
 </div>
 
-<div class="player-bar" id="p-bar" style="display:none;">
-    <div style="display:flex; align-items:center; width:30%;">
-        <img id="p-img" src="" style="width:50px; height:50px; border-radius:5px; margin-right:12px;">
-        <div style="overflow:hidden">
-            <div id="p-name" style="font-weight:bold; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;"></div>
-            <div id="p-art" style="font-size:12px; color:var(--text-dim);"></div>
+<div class="mini-player" id="mini-p" onclick="toggleFullPlayer(true)">
+    <div style="display:flex; align-items:center; flex:1; overflow:hidden;">
+        <img id="m-img" src="">
+        <div style="overflow:hidden;">
+            <div id="m-title" style="font-weight:bold; font-size:14px; white-space:nowrap; text-overflow:ellipsis;"></div>
+            <div id="m-artist" style="font-size:11px; opacity:0.6;"></div>
         </div>
     </div>
-    <div style="display:flex; gap:25px; align-items:center;">
-        <i class="fas fa-step-backward" onclick="prev()"></i>
-        <i id="p-play" class="fas fa-play" style="font-size:24px;" onclick="toggle()"></i>
-        <i class="fas fa-step-forward" onclick="next()"></i>
-    </div>
-    <div style="width:30%; text-align:right;">
-        <i class="far fa-heart" onclick="tg.HapticFeedback.impactOccurred('medium')"></i>
+    <div style="display:flex; gap:15px; align-items:center;">
+        <i id="m-play" class="fas fa-play" onclick="event.stopPropagation(); toggle();"></i>
     </div>
 </div>
+
+<div class="full-player" id="full-p">
+    <i class="fas fa-chevron-down close-btn" onclick="toggleFullPlayer(false)"></i>
+    
+    <div class="fp-img-container">
+        <img id="fp-img" class="fp-img" src="">
+    </div>
+
+    <div class="fp-info">
+        <div id="fp-title" class="fp-title"></div>
+        <div id="fp-artist" class="fp-artist"></div>
+    </div>
+
+    <div style="width:100%;">
+        <input type="range" id="fp-range" value="0" style="width:100%; accent-color:white;" oninput="seek(this.value)">
+    </div>
+
+    <div class="fp-controls">
+        <i class="fas fa-step-backward" style="font-size:24px;" onclick="prev()"></i>
+        <div class="fp-play-btn" onclick="toggle()">
+            <i id="fp-play" class="fas fa-play"></i>
+        </div>
+        <i class="fas fa-step-forward" style="font-size:24px;" onclick="next()"></i>
+    </div>
+</div>
+
+<nav>
+    <div class="active" onclick="navTo('home', this)"><i class="fas fa-home"></i>Домой</div>
+    <div onclick="navTo('search', this)"><i class="fas fa-search"></i>Поиск</div>
+</nav>
 
 <script>
     const tg = window.Telegram.WebApp;
-    let player;
-    let playlist = [];
-    let currentIdx = -1;
-
-    const artists = [
-        { n: "Платина", i: "https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512" },
-        { n: "OG Buda", i: "https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98" },
-        { n: "Friendly Thug 52", i: "https://i.scdn.co/image/ab6761610000e5eb559810775d799988a87c5305" },
-        { n: "Mishlawi", i: "https://i.scdn.co/image/ab6761610000e5eb1d8677c77f0223e7456d2036" },
-        { n: "Scally Milano", i: "https://i.scdn.co/image/ab6761610000e5eb1432f7413a1a44e54884279b" }
-    ];
+    let player, currentIdx = -1, playlist = [];
 
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', {
             events: {
                 'onStateChange': (e) => {
-                    document.getElementById('p-play').className = e.data === 1 ? 'fas fa-pause' : 'fas fa-play';
+                    const isPlaying = e.data === 1;
+                    document.getElementById('m-play').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+                    document.getElementById('fp-play').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+                    document.getElementById('fp-img').classList.toggle('playing', isPlaying);
                     if(e.data === 0) next();
                 }
             }
         });
     }
 
-    function render() {
-        document.getElementById('artist-row').innerHTML = artists.map(a => `
-            <div class="artist-circle" onclick="search('${a.n}')">
-                <img src="${a.i}">
-                <div style="font-weight:500; font-size:14px;">${a.n}</div>
-            </div>
-        `).join('');
+    function toggleFullPlayer(show) {
+        document.getElementById('full-p').classList.toggle('active', show);
+        tg.HapticFeedback.impactOccurred('medium');
     }
 
     async function search(q) {
-        showPage('search');
-        document.getElementById('s-input').value = q;
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q + " Official Audio")}`);
+        navTo('search', document.querySelectorAll('nav div')[1]);
+        document.getElementById('main-search').value = q;
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q + " Official Music")}`);
         const data = await res.json();
         playlist = data;
-        document.getElementById('s-results').innerHTML = data.map((t, i) => `
+        document.getElementById('results').innerHTML = data.map((t, i) => `
             <div style="display:flex; align-items:center; margin-bottom:15px;" onclick="play(${i})">
-                <img src="${t.img}" style="width:50px; height:50px; border-radius:5px; margin-right:15px;">
+                <img src="${t.img}" style="width:55px; height:55px; border-radius:10px; margin-right:15px;">
                 <div>
                     <div style="font-weight:bold;">${t.title}</div>
-                    <div style="font-size:12px; color:var(--text-dim);">${t.artist}</div>
+                    <div style="opacity:0.5;">${t.artist}</div>
                 </div>
             </div>
         `).join('');
@@ -269,10 +214,15 @@
     function play(idx) {
         currentIdx = idx;
         const t = playlist[idx];
-        document.getElementById('p-bar').style.display = 'flex';
-        document.getElementById('p-img').src = t.img;
-        document.getElementById('p-name').innerText = t.title;
-        document.getElementById('p-art').innerText = t.artist;
+        document.getElementById('mini-p').style.display = 'flex';
+        
+        // Обновление UI
+        ['m', 'fp'].forEach(p => {
+            document.getElementById(`${p}-img`).src = t.img;
+            document.getElementById(`${p}-title`).innerText = t.title;
+            document.getElementById(`${p}-artist`).innerText = t.artist;
+        });
+
         player.loadVideoById(t.id);
         player.playVideo();
         player.unMute();
@@ -285,15 +235,15 @@
     function next() { if(currentIdx < playlist.length - 1) play(currentIdx + 1); }
     function prev() { if(currentIdx > 0) play(currentIdx - 1); }
 
-    function showPage(p) {
-        document.getElementById('view-home').style.display = p === 'home' ? 'block' : 'none';
-        document.getElementById('view-search').style.display = p === 'search' ? 'block' : 'none';
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    function navTo(p, el) {
+        document.getElementById('page-home').style.display = p === 'home' ? 'block' : 'none';
+        document.getElementById('page-search').style.display = p === 'search' ? 'block' : 'none';
+        document.querySelectorAll('nav div').forEach(d => d.classList.remove('active'));
+        el.classList.add('active');
     }
 
-    document.getElementById('s-input').onkeypress = (e) => { if(e.key === 'Enter') search(e.target.value); };
-
-    window.onload = render;
+    document.getElementById('main-search').onkeypress = (e) => { if(e.key === 'Enter') search(e.target.value); };
 </script>
+
 </body>
 </html>
