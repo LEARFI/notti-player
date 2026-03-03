@@ -3,158 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Fix</title>
+    <title>Notti Music Native</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root { --accent: #1DB954; --bg: #000; }
-        body, html { background: var(--bg); color: white; margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
-
-        /* Фикс фото артистов */
-        .artist-img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; background: #222; margin-bottom: 8px; }
         
-        .page { display: none; padding: 20px; height: 100vh; overflow-y: auto; box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body, html { 
+            background: var(--bg); color: white; margin: 0; padding: 0; 
+            height: 100vh; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; 
+        }
+
+        .app { display: flex; flex-direction: column; height: 100vh; }
+
+        /* Страницы */
+        .page { flex: 1; overflow-y: auto; padding: 20px 20px 150px; display: none; }
         .page.active { display: block; }
 
-        /* Плеер (как на скриншоте) */
-        .full-player { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; padding: 40px 30px; }
-        .full-player.active { display: flex; }
+        /* Сетка артистов */
+        .artist-item { min-width: 100px; text-align: center; cursor: pointer; }
+        .artist-img { 
+            width: 90px; height: 90px; border-radius: 50%; 
+            object-fit: cover; background: #222; margin-bottom: 8px;
+            border: 1px solid #333;
+        }
+
+        /* ПОЛНОЭКРАННЫЙ ПЛЕЕР (Исправленная геометрия) */
+        .full-player {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
+            display: none; flex-direction: column;
+            padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom);
+        }
+        .full-player.active { display: flex; animation: slideIn 0.3s ease-out; }
+
+        .fp-header { height: 60px; display: flex; align-items: center; justify-content: space-between; }
         
-        .cover-art { width: 100%; aspect-ratio: 1/1; border-radius: 20px; object-fit: cover; margin: 40px 0; box-shadow: 0 10px 50px rgba(0,0,0,0.8); }
+        /* Контейнер обложки - теперь она не распирает экран */
+        .fp-cover-area {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            min-height: 0; padding: 20px 0;
+        }
+        .fp-cover-area img {
+            max-width: 100%; max-height: 100%; aspect-ratio: 1/1;
+            border-radius: 24px; object-fit: cover;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
 
-        /* Скрытый контейнер YouTube (обязателен для звука) */
-        #yt-hold { position: absolute; top: -1000px; width: 200px; height: 200px; }
+        .fp-info { padding-bottom: 30px; }
+        .fp-info h1 { font-size: 26px; margin: 0; font-weight: 800; }
+        .fp-info p { font-size: 18px; color: #b3b3b3; margin: 8px 0 0; }
 
-        nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; display: flex; border-top: 1px solid #111; }
-        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; font-size: 12px; }
+        /* Прогресс-бар */
+        .progress-container { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-bottom: 40px; position: relative; }
+        #progress { height: 100%; background: #fff; border-radius: 2px; width: 0%; }
+
+        .fp-controls {
+            display: flex; align-items: center; justify-content: space-between;
+            padding-bottom: 40px;
+        }
+        .play-btn {
+            width: 80px; height: 80px; background: white; color: black;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 32px;
+        }
+
+        /* Навигация */
+        nav { 
+            position: fixed; bottom: 0; width: 100%; height: 75px; 
+            background: rgba(0,0,0,0.9); display: flex; border-top: 1px solid #111;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; font-size: 11px; }
         nav div.active { opacity: 1; color: var(--accent); }
-        
-        .track-card { display: flex; align-items: center; margin-bottom: 15px; background: #111; padding: 10px; border-radius: 12px; }
-        .track-card img { width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; }
+
+        @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div id="yt-hold"><div id="player"></div></div>
-
-<div id="home" class="page active">
-    <h2>Артисты</h2>
-    <div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px;" id="artist-list"></div>
-    
-    <h2>Поиск</h2>
-    <input type="text" id="searchInput" placeholder="Название трека..." style="width:100%; padding:15px; border-radius:12px; border:none; background:#1a1a1a; color:white; outline:none;">
-    <div id="searchResults" style="margin-top:20px;"></div>
-</div>
-
-<div class="full-player" id="fullPlayer">
-    <div onclick="toggleFull(false)"><i class="fas fa-chevron-down" style="font-size: 24px;"></i></div>
-    <img id="fCover" class="cover-art" src="">
-    <h1 id="fTitle" style="margin:0; font-size:28px;"></h1>
-    <p id="fArtist" style="opacity:0.5; font-size:18px; margin-top:10px;"></p>
-    
-    <div style="display:flex; align-items:center; justify-content:center; gap:40px; margin-top:50px;">
-        <i class="fas fa-step-backward" style="font-size:30px;"></i>
-        <div onclick="togglePlay()" style="width:80px; height:80px; background:white; color:black; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-            <i id="playIcon" class="fas fa-play" style="font-size:30px;"></i>
-        </div>
-        <i class="fas fa-step-forward" style="font-size:30px;"></i>
+<div class="app">
+    <div id="p-home" class="page active">
+        <h2 style="font-size: 28px; font-weight: 800;">Артисты</h2>
+        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px;" id="artists"></div>
+        
+        <h2>Тренды</h2>
+        <div id="tracks-list"></div>
     </div>
-</div>
 
-<nav>
-    <div class="active" onclick="switchTab('home', this)"><i class="fas fa-home"></i><br>Главная</div>
-    <div onclick="switchTab('settings', this)"><i class="fas fa-cog"></i><br>Настройки</div>
-</nav>
+    <div class="full-player" id="player-ui">
+        <div class="fp-header">
+            <i class="fas fa-chevron-down" onclick="toggleUI(false)" style="font-size: 24px;"></i>
+            <span style="text-transform: uppercase; font-size: 12px; letter-spacing: 2px; opacity: 0.6;">Notti Music</span>
+            <i class="fas fa-ellipsis-h"></i>
+        </div>
+
+        <div class="fp-cover-area">
+            <img id="f-img" src="" alt="cover">
+        </div>
+
+        <div class="fp-info">
+            <h1 id="f-title">Название</h1>
+            <p id="f-artist">Исполнитель</p>
+        </div>
+
+        <div class="progress-container">
+            <div id="progress"></div>
+        </div>
+
+        <div class="fp-controls">
+            <i class="fas fa-random" style="opacity: 0.5;"></i>
+            <i class="fas fa-step-backward" style="font-size: 28px;"></i>
+            <div class="play-btn" onclick="togglePlay()">
+                <i id="p-icon" class="fas fa-play"></i>
+            </div>
+            <i class="fas fa-step-forward" style="font-size: 28px;"></i>
+            <i class="fas fa-redo" style="opacity: 0.5;"></i>
+        </div>
+    </div>
+
+    <nav>
+        <div class="active"><i class="fas fa-home"></i>Главная</div>
+        <div><i class="fas fa-search"></i>Поиск</div>
+        <div><i class="fas fa-heart"></i>Любимое</div>
+        <div onclick="switchTab('p-home')"><i class="fas fa-user"></i>Профиль</div>
+    </nav>
+</div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    let ytPlayer;
+    const audio = new Audio();
+    let isPlaying = false;
 
-    // Ссылки на видео артистов для получения фото
-    const artists = [
-        { name: "Платина", vid: "S_u-P_0E8zM" }, 
-        { name: "OG Buda", vid: "RzI97v_hQRE" },
-        { name: "FRIENDLY THUG", vid: "Xp3u8uH6hIs" }
+    // База данных (в реальном приложении это будет приходить с сервера)
+    const musicData = [
+        { 
+            title: "Хенни", 
+            artist: "Платина", 
+            img: "https://e-cdns-images.dzcdn.net/images/cover/61665e71887e04918f0a05845239a2d6/500x500.jpg",
+            url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" // Замени на свои MP3
+        },
+        { 
+            title: "Легенда", 
+            artist: "OG Buda", 
+            img: "https://e-cdns-images.dzcdn.net/images/cover/9875f5436c9443586a345a98/500x500.jpg",
+            url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+        }
     ];
 
-    function onYouTubeIframeAPIReady() {
-        ytPlayer = new YT.Player('player', {
-            height: '200', width: '200',
-            playerVars: { 'autoplay': 1, 'playsinline': 1 },
-            events: {
-                'onStateChange': (e) => {
-                    document.getElementById('playIcon').className = e.data === 1 ? 'fas fa-pause' : 'fas fa-play';
-                }
-            }
-        });
-    }
+    const artists = [
+        { name: "Платина", img: "https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512" },
+        { name: "OG Buda", img: "https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98" },
+        { name: "Friendly Thug", img: "https://i.scdn.co/image/ab6761610000e5eb559810775d799988a87c5305" }
+    ];
 
-    function renderArtists() {
-        const container = document.getElementById('artist-list');
-        container.innerHTML = artists.map(a => `
-            <div onclick="startSearch('${a.name}')" style="text-align:center; min-width:90px;">
-                <img class="artist-img" src="https://i.ytimg.com/vi/${a.vid}/hqdefault.jpg">
+    function init() {
+        // Рендер артистов
+        document.getElementById('artists').innerHTML = artists.map(a => `
+            <div class="artist-item">
+                <img src="${a.img}" class="artist-img">
                 <div style="font-size:12px;">${a.name}</div>
             </div>
         `).join('');
-    }
 
-    async function startSearch(q) {
-        // Здесь имитация поиска (в реальном приложении тут fetch к вашему API)
-        const mockData = [
-            { id: "S_u-P_0E8zM", title: "Хенни", artist: "Платина" },
-            { id: "RzI97v_hQRE", title: "Легенда", artist: "OG Buda" }
-        ];
-        
-        document.getElementById('searchResults').innerHTML = mockData.map(t => `
-            <div class="track-card" onclick="playTrack('${t.id}', '${t.title}', '${t.artist}')">
-                <img src="https://i.ytimg.com/vi/${t.id}/hqdefault.jpg">
+        // Рендер треков
+        document.getElementById('tracks-list').innerHTML = musicData.map((t, i) => `
+            <div style="display:flex; align-items:center; margin-bottom:15px;" onclick="playTrack(${i})">
+                <img src="${t.img}" style="width:50px; height:50px; border-radius:8px; margin-right:15px;">
                 <div>
-                    <b>${t.title}</b><br>
-                    <span style="opacity:0.5; font-size:12px;">${t.artist}</span>
+                    <div style="font-weight:bold;">${t.title}</div>
+                    <div style="opacity:0.5; font-size:12px;">${t.artist}</div>
                 </div>
             </div>
         `).join('');
+
+        tg.expand();
     }
 
-    function playTrack(id, title, artist) {
-        document.getElementById('fCover').src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-        document.getElementById('fTitle').innerText = title;
-        document.getElementById('fArtist').innerText = artist;
-        document.getElementById('fullPlayer').classList.add('active');
+    function playTrack(i) {
+        const t = musicData[i];
+        document.getElementById('f-img').src = t.img;
+        document.getElementById('f-title').innerText = t.title;
+        document.getElementById('f-artist').innerText = t.artist;
         
-        ytPlayer.loadVideoById(id);
-        ytPlayer.playVideo();
-        ytPlayer.unMute(); // Принудительно включаем звук
+        audio.src = t.url;
+        audio.play();
+        isPlaying = true;
+        updateIcon();
+        toggleUI(true);
+        
         tg.HapticFeedback.impactOccurred('medium');
     }
 
     function togglePlay() {
-        if(ytPlayer.getPlayerState() === 1) ytPlayer.pauseVideo();
-        else ytPlayer.playVideo();
+        if (isPlaying) audio.pause(); else audio.play();
+        isPlaying = !isPlaying;
+        updateIcon();
     }
 
-    function toggleFull(show) {
-        document.getElementById('fullPlayer').classList.toggle('active', show);
+    function updateIcon() {
+        document.getElementById('p-icon').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
     }
 
-    function switchTab(id, el) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.querySelectorAll('nav div').forEach(d => d.classList.remove('active'));
-        el.classList.add('active');
+    function toggleUI(show) {
+        document.getElementById('player-ui').classList.toggle('active', show);
     }
 
-    document.getElementById('searchInput').onkeypress = (e) => {
-        if(e.key === 'Enter') startSearch(e.target.value);
+    // Обновление прогресс-бара
+    audio.ontimeupdate = () => {
+        const pct = (audio.currentTime / audio.duration) * 100;
+        document.getElementById('progress').style.width = pct + '%';
     };
 
-    window.onload = () => {
-        renderArtists();
-        tg.expand();
-    };
+    init();
 </script>
 </body>
 </html>
