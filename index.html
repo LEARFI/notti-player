@@ -3,76 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti SoundCloud Live</title>
+    <title>Notti Music Fixed</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root { --accent: #ff5500; --bg: #000; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         body, html { background: var(--bg); color: white; margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: -apple-system, sans-serif; }
+        
         .app { display: flex; flex-direction: column; height: 100vh; }
         .page { flex: 1; overflow-y: auto; padding: 20px 20px 150px; display: none; }
         .page.active { display: block; }
 
-        /* Артисты */
-        .artist-item { min-width: 100px; text-align: center; cursor: pointer; }
-        .artist-img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; background: #222; border: 1px solid #333; }
+        /* Поиск */
+        .search-box { position: sticky; top: 0; background: var(--bg); padding: 10px 0; z-index: 10; }
+        #scSearch { width: 100%; padding: 16px; border-radius: 14px; border: 2px solid #222; background: #111; color: white; font-size: 16px; transition: 0.3s; }
+        #scSearch:focus { border-color: var(--accent); }
+
+        /* Треки */
+        .track-card { display: flex; align-items: center; padding: 12px; background: #121212; border-radius: 12px; margin-bottom: 12px; cursor: pointer; border: 1px solid transparent; }
+        .track-card:active { transform: scale(0.98); background: #1a1a1a; }
+        .track-card img { width: 55px; height: 55px; border-radius: 8px; margin-right: 15px; object-fit: cover; background: #222; }
+        .track-info { flex: 1; overflow: hidden; }
+        .track-title { font-weight: bold; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; margin-bottom: 4px; }
+        .track-artist { opacity: 0.5; font-size: 13px; }
 
         /* Плеер */
         .full-player { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom); }
-        .full-player.active { display: flex; }
-        .fp-cover { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
-        .fp-cover img { max-width: 100%; max-height: 85%; aspect-ratio: 1/1; border-radius: 15px; object-fit: cover; box-shadow: 0 10px 40px rgba(255,85,0,0.2); }
-        
-        .progress-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; margin: 25px 0; }
-        #progress { height: 100%; background: var(--accent); width: 0%; transition: 0.1s; }
+        .full-player.active { display: flex; animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .fp-cover { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 20px 0; }
+        .fp-cover img { max-width: 100%; max-height: 90%; aspect-ratio: 1/1; border-radius: 20px; object-fit: cover; box-shadow: 0 10px 50px rgba(255,85,0,0.3); }
+
+        .progress-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-bottom: 40px; }
+        #progress { height: 100%; background: var(--accent); width: 0%; border-radius: 2px; }
 
         .fp-controls { display: flex; align-items: center; justify-content: space-around; padding-bottom: 40px; }
-        .play-btn { width: 75px; height: 75px; background: white; color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-        
-        .track-card { display: flex; align-items: center; padding: 12px; background: #111; border-radius: 12px; margin-bottom: 12px; }
-        .track-card img { width: 55px; height: 55px; border-radius: 8px; margin-right: 15px; background: #222; }
+        .play-btn { width: 75px; height: 75px; background: white; color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; }
 
-        nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; display: flex; border-top: 1px solid #111; z-index: 1000; }
-        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; font-size: 11px; }
+        nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.9); display: flex; border-top: 1px solid #111; z-index: 1000; backdrop-filter: blur(10px); }
+        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.4; font-size: 11px; transition: 0.2s; }
         nav div.active { opacity: 1; color: var(--accent); }
+        
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .loader { text-align: center; padding: 20px; display: none; color: var(--accent); }
     </style>
 </head>
 <body>
 
 <div class="app">
     <div id="p-home" class="page active">
-        <h1 style="color: var(--accent); font-size: 28px;">Notti Music</h1>
-        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 25px;" id="artist-shelf"></div>
+        <h1 style="font-size: 32px; margin-bottom: 10px;">Music</h1>
         
-        <div style="position: relative; margin-bottom: 20px;">
-            <input type="text" id="scSearch" placeholder="Поиск в SoundCloud..." style="width:100%; padding:15px; border-radius:12px; border:none; background:#1a1a1a; color:white; outline:none;">
+        <div class="search-box">
+            <input type="text" id="scSearch" placeholder="Поиск артиста или трека...">
         </div>
         
-        <h2 id="stitle" style="font-size: 20px;">Рекомендации</h2>
+        <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Ищем в SoundCloud...</div>
         <div id="results"></div>
     </div>
 
     <div class="full-player" id="player-ui">
-        <div onclick="toggleUI(false)"><i class="fas fa-chevron-down" style="font-size: 24px;"></i></div>
+        <div onclick="toggleUI(false)" style="padding: 10px 0;"><i class="fas fa-chevron-down" style="font-size: 26px;"></i></div>
         <div class="fp-cover"><img id="f-img" src=""></div>
-        <div style="text-align: center;">
-            <h2 id="f-title" style="margin:0; font-size: 24px;"></h2>
-            <p id="f-artist" style="opacity:0.5; font-size: 18px; margin-top: 5px;"></p>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 id="f-title" style="margin: 0; font-size: 26px;"></h2>
+            <p id="f-artist" style="opacity:0.5; font-size: 18px; margin-top: 8px;"></p>
         </div>
         <div class="progress-bar"><div id="progress"></div></div>
         <div class="fp-controls">
-            <i class="fas fa-step-backward" onclick="changeT(-1)" style="font-size: 28px;"></i>
+            <i class="fas fa-step-backward" onclick="changeT(-1)" style="font-size: 30px;"></i>
             <div class="play-btn" onclick="togglePlay()"><i id="p-icon" class="fas fa-play"></i></div>
-            <i class="fas fa-step-forward" onclick="changeT(1)" style="font-size: 28px;"></i>
+            <i class="fas fa-step-forward" onclick="changeT(1)" style="font-size: 30px;"></i>
         </div>
     </div>
 
     <nav>
-        <div class="active"><i class="fas fa-home"></i><br>Главная</div>
-        <div><i class="fas fa-search"></i><br>Поиск</div>
-        <div onclick="toggleUI(true)"><i class="fas fa-play-circle"></i><br>Плеер</div>
+        <div class="active"><i class="fas fa-home" style="font-size: 22px; margin-bottom: 5px;"></i>Главная</div>
+        <div onclick="toggleUI(true)"><i class="fas fa-play-circle" style="font-size: 22px; margin-bottom: 5px;"></i>Плеер</div>
     </nav>
 </div>
 
@@ -82,77 +90,115 @@
     const audio = new Audio();
     let isPlaying = false, currentIdx = 0, queue = [];
 
-    const artists = [
-        { name: "Платина", img: "https://i1.sndcdn.com/avatars-000600125742-mqqe0n-t500x500.jpg" },
-        { name: "OG Buda", img: "https://i1.sndcdn.com/avatars-000572836269-i4qfbc-t500x500.jpg" },
-        { name: "Travis Scott", img: "https://i1.sndcdn.com/avatars-000414988470-3v3v3v-t500x500.jpg" }
-    ];
-
+    // ГЛАВНЫЙ ФИКС ПОИСКА
     async function search(q) {
-        document.getElementById('stitle').innerText = "Поиск: " + q;
-        try {
-            const r = await fetch(`https://api-v2.soundcloud.com/search?q=${encodeURIComponent(q)}&client_id=${clientID}&limit=15`);
-            const d = await r.json();
-            
-            queue = d.collection.filter(t => t.kind === 'track').map(t => ({
-                title: t.title,
-                artist: t.user.username,
-                img: (t.artwork_url || t.user.avatar_url).replace('large', 't500x500'),
-                url: `https://api.soundcloud.com/tracks/${t.id}/stream?client_id=${clientID}`
-            }));
+        if (!q) return;
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('results').innerHTML = '';
 
-            render();
-        } catch (e) { console.error("Ошибка API", e); }
+        try {
+            // Используем v2 поиск, но через обработку ошибок
+            const url = `https://api-v2.soundcloud.com/search/queries?q=${encodeURIComponent(q)}&client_id=${clientID}&limit=10`;
+            
+            // На самом деле для поиска треков лучше подходит этот эндпоинт:
+            const trackUrl = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${clientID}&limit=20`;
+            
+            const response = await fetch(trackUrl);
+            const data = await response.json();
+            
+            if (data.collection && data.collection.length > 0) {
+                queue = data.collection.map(t => ({
+                    id: t.id,
+                    title: t.title,
+                    artist: t.user.username,
+                    img: (t.artwork_url || t.user.avatar_url || '').replace('large', 't500x500'),
+                    url: `https://api.soundcloud.com/tracks/${t.id}/stream?client_id=${clientID}`
+                }));
+                render();
+            } else {
+                document.getElementById('results').innerHTML = '<p style="text-align:center; opacity:0.5;">Ничего не найдено</p>';
+            }
+        } catch (error) {
+            console.error("Search error:", error);
+            document.getElementById('results').innerHTML = '<p style="text-align:center; color:red;">Ошибка поиска. Проверьте Client ID.</p>';
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
     }
 
     function render() {
         document.getElementById('results').innerHTML = queue.map((t, i) => `
             <div class="track-card" onclick="playT(${i})">
-                <img src="${t.img}">
-                <div style="flex:1; overflow:hidden;">
-                    <div style="font-weight:bold; white-space:nowrap; text-overflow:ellipsis;">${t.title}</div>
-                    <div style="opacity:0.5; font-size:12px;">${t.artist}</div>
+                <img src="${t.img || 'https://via.placeholder.com/150/222/fff?text=No+Art'}">
+                <div class="track-info">
+                    <div class="track-title">${t.title}</div>
+                    <div class="track-artist">${t.artist}</div>
                 </div>
-                <i class="fas fa-play-circle" style="color:var(--accent); font-size:24px;"></i>
+                <i class="fas fa-play" style="color:var(--accent); opacity:0.8;"></i>
             </div>
         `).join('');
     }
 
     function playT(i) {
-        currentIdx = i; const t = queue[i];
-        document.getElementById('f-img').src = t.img;
+        currentIdx = i;
+        const t = queue[i];
+        
+        document.getElementById('f-img').src = t.img || 'https://via.placeholder.com/150/222/fff?text=No+Art';
         document.getElementById('f-title').innerText = t.title;
         document.getElementById('f-artist').innerText = t.artist;
         
         audio.src = t.url;
         audio.play().catch(e => {
-            // Если прямой стрим заблокирован, пробуем альтернативный поток (HLS не поддерживается в чистом Audio без hls.js)
-            alert("Этот трек защищен или недоступен для стриминга");
+            console.log("Playback blocked or failed", e);
+            // Некоторые треки требуют подписки или спец. разрешений
         });
         
-        isPlaying = true; updateIcon(); toggleUI(true);
+        isPlaying = true;
+        updateIcon();
+        toggleUI(true);
         tg.HapticFeedback.impactOccurred('medium');
     }
 
-    function togglePlay() { isPlaying ? audio.pause() : audio.play(); isPlaying = !isPlaying; updateIcon(); }
-    function updateIcon() { document.getElementById('p-icon').className = isPlaying ? 'fas fa-pause' : 'fas fa-play'; }
-    function toggleUI(s) { document.getElementById('player-ui').classList.toggle('active', s); }
-    function changeT(dir) { currentIdx = (currentIdx + dir + queue.length) % queue.length; playT(currentIdx); }
+    function togglePlay() {
+        if (isPlaying) audio.pause(); else audio.play();
+        isPlaying = !isPlaying;
+        updateIcon();
+    }
 
-    document.getElementById('scSearch').onkeypress = (e) => { if(e.key === 'Enter') search(e.target.value); };
+    function updateIcon() {
+        document.getElementById('p-icon').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+    }
 
-    window.onload = () => {
-        document.getElementById('artist-shelf').innerHTML = artists.map(a => `
-            <div class="artist-item" onclick="search('${a.name}')">
-                <img src="${a.img}" class="artist-img">
-                <div style="font-size:12px; margin-top:8px;">${a.name}</div>
-            </div>
-        `).join('');
-        search('Pop Smoke'); // Стартовая подборка
-        tg.expand();
+    function toggleUI(s) {
+        document.getElementById('player-ui').classList.toggle('active', s);
+    }
+
+    function changeT(dir) {
+        currentIdx = (currentIdx + dir + queue.length) % queue.length;
+        playT(currentIdx);
+    }
+
+    // Слушатель ввода
+    document.getElementById('scSearch').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            search(e.target.value);
+            e.target.blur(); // Скрыть клавиатуру
+        }
+    });
+
+    // Прогресс
+    audio.ontimeupdate = () => {
+        if (audio.duration) {
+            document.getElementById('progress').style.width = (audio.currentTime / audio.duration * 100) + '%';
+        }
     };
 
-    audio.ontimeupdate = () => { document.getElementById('progress').style.width = (audio.currentTime / audio.duration * 100) + '%'; };
+    audio.onended = () => changeT(1);
+
+    window.onload = () => {
+        tg.expand();
+        search('Pop Smoke'); // Начальная загрузка
+    };
 </script>
 </body>
 </html>
