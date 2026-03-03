@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Dynamic Glass</title>
+    <title>Notti Music - My Wave</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root {
-            --spotify-green: #1DB954;
-            --glass: rgba(0, 0, 0, 0.4);
+            --accent-color: #1DB954;
+            --glass: rgba(0, 0, 0, 0.6);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --dynamic-color: #333; /* Будет меняться через JS */
+            --dynamic-color: #333;
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
@@ -29,7 +29,6 @@
             justify-content: center;
         }
 
-        /* Живой фон */
         .bg-glow {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -38,16 +37,8 @@
             z-index: -1;
         }
 
-        .app-container {
-            width: 100%;
-            max-width: 500px;
-            height: 100vh;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-        }
+        .app-container { width: 100%; max-width: 500px; height: 100vh; position: relative; display: flex; flex-direction: column; }
 
-        /* Стекло */
         .glass {
             background: var(--glass);
             backdrop-filter: blur(25px);
@@ -55,46 +46,35 @@
             border: 1px solid var(--glass-border);
         }
 
-        /* Страницы */
         .content-area { flex-grow: 1; overflow-y: auto; padding-bottom: 180px; }
         .page { display: none; padding: 25px; animation: fadeIn 0.4s ease; }
         .active-page { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Визуализатор */
-        .visualizer {
-            display: flex; justify-content: center; align-items: flex-end;
-            gap: 4px; height: 30px; margin-top: -35px; margin-bottom: 15px;
-            opacity: 0; transition: opacity 0.5s;
-        }
-        .playing .visualizer { opacity: 1; }
-        .bar { width: 4px; background: white; border-radius: 2px; animation: bounce 0.5s infinite alternate; }
-        @keyframes bounce { from { height: 4px; } to { height: 24px; } }
-
-        /* Обложка */
+        /* Обложка и Свайп */
         .cover-container {
             width: 100%; display: flex; flex-direction: column; align-items: center;
-            transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .playing .cover-container { transform: scale(1.05); }
         .f-img {
             width: 100%; aspect-ratio: 1/1; border-radius: 24px;
             object-fit: cover; box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
+        .slide-left { transform: translateX(-100px); opacity: 0; }
+        .slide-right { transform: translateX(100px); opacity: 0; }
 
         /* Навигация */
         nav {
             position: absolute; bottom: 0; width: 100%;
             display: flex; justify-content: space-around;
             padding: 15px 0 calc(15px + var(--safe-bottom));
-            border-radius: 30px 30px 0 0;
-            z-index: 1000;
+            border-radius: 30px 30px 0 0; z-index: 1000;
         }
-        nav a { color: rgba(255,255,255,0.4); text-decoration: none; text-align: center; transition: 0.3s; }
-        nav a.active { color: white; }
-        nav a i { font-size: 22px; display: block; margin-bottom: 4px; }
+        nav a { color: rgba(255,255,255,0.4); text-decoration: none; text-align: center; transition: 0.3s; font-size: 10px; }
+        nav a.active { color: var(--accent-color); }
+        nav a i { font-size: 20px; display: block; margin-bottom: 4px; }
 
-        /* Плееры */
         .mini-player {
             position: absolute; bottom: calc(85px + var(--safe-bottom));
             left: 15px; right: 15px; padding: 10px 15px;
@@ -110,14 +90,17 @@
         #full-player.open { transform: translateY(-100%); }
 
         .btn-play-big {
-            background: white; color: black; width: 75px; height: 75px;
+            background: white; color: black; width: 70px; height: 70px;
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 30px; transition: 0.2s;
+            font-size: 28px;
         }
-        .btn-play-big:active { transform: scale(0.85); }
 
         input[type="range"] { width: 100%; -webkit-appearance: none; background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: white; border-radius: 50%; }
+
+        /* Настройки цветов */
+        .color-dot { width: 35px; height: 35px; border-radius: 50%; border: 2px solid transparent; }
+        .color-dot.active { border-color: white; }
 
         #yt-player { display: none; }
     </style>
@@ -131,10 +114,15 @@
 
     <div class="content-area">
         <div id="home" class="page active-page">
-            <h2 style="font-size: 32px; font-weight: 800; margin-bottom: 25px;">Для тебя</h2>
-            <div id="top-charts" style="display: flex; gap: 18px; overflow-x: auto; padding-bottom: 10px;"></div>
-            <h3 style="margin-top: 40px; opacity: 0.6; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Твоя медиатека</h3>
-            <div id="playlists-container"></div>
+            <h2 style="font-size: 32px; font-weight: 800; margin-bottom: 25px;">Главная</h2>
+            
+            <div onclick="playMyWave()" class="glass" style="padding: 20px; border-radius: 20px; background: linear-gradient(45deg, #1DB954, #191414); margin-bottom: 30px;">
+                <h3 style="margin: 0;"><i class="fas fa-wave-square"></i> Моя волна</h3>
+                <p style="font-size: 12px; opacity: 0.8;">Умный подбор по вашим вкусам</p>
+            </div>
+
+            <h3 id="txt-trending" style="opacity: 0.6; font-size: 14px; text-transform: uppercase;">В тренде</h3>
+            <div id="top-charts" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px;"></div>
         </div>
 
         <div id="search" class="page">
@@ -144,61 +132,87 @@
             </div>
             <div id="search-results" style="margin-top: 25px;"></div>
         </div>
+
+        <div id="favorites" class="page">
+            <h2 id="txt-fav" style="font-size: 32px; font-weight: 800; margin-bottom: 25px;">Избранное</h2>
+            <div id="fav-results"></div>
+        </div>
+
+        <div id="settings" class="page">
+            <h2 id="txt-settings" style="font-size: 32px; font-weight: 800; margin-bottom: 25px;">Настройки</h2>
+            
+            <div class="glass" style="padding: 20px; border-radius: 20px; margin-bottom: 15px;">
+                <p id="txt-ui-color">Цвет акцента</p>
+                <div style="display: flex; gap: 15px;">
+                    <div onclick="setAccent('#1DB954')" class="color-dot" style="background:#1DB954;"></div>
+                    <div onclick="setAccent('#007AFF')" class="color-dot" style="background:#007AFF;"></div>
+                    <div onclick="setAccent('#FF2D55')" class="color-dot" style="background:#FF2D55;"></div>
+                    <div onclick="setAccent('#AF52DE')" class="color-dot" style="background:#AF52DE;"></div>
+                </div>
+            </div>
+
+            <div class="glass" style="padding: 20px; border-radius: 20px;">
+                <p id="txt-ui-lang">Язык</p>
+                <select id="lang-select" onchange="changeLanguage(this.value)" style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 12px; width: 100%; border-radius: 12px; outline: none;">
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <div class="mini-player glass" id="mini-p" onclick="openFullPlayer()" style="display: none;">
-        <img id="m-img" src="" style="width:48px; height:48px; border-radius:10px; margin-right:15px; object-fit: cover;">
+        <img id="m-img" src="" style="width:44px; height:44px; border-radius:8px; margin-right:12px; object-fit: cover;">
         <div style="flex-grow:1; overflow:hidden;">
-            <div id="m-title" style="font-size:14px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-            <div id="m-artist" style="font-size:12px; opacity:0.5;"></div>
+            <div id="m-title" style="font-size:13px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            <div id="m-artist" style="font-size:11px; opacity:0.5;"></div>
         </div>
-        <i id="m-play" class="fas fa-play" style="font-size:22px; margin-left:15px;" onclick="togglePlay(event)"></i>
+        <i id="m-play" class="fas fa-play" style="font-size:20px; margin-left:15px;" onclick="togglePlay(event)"></i>
     </div>
 
     <div id="full-player">
         <div style="width:100%; display:flex; justify-content:space-between; align-items:center; opacity:0.5;">
             <i class="fas fa-chevron-down" style="font-size: 22px;" onclick="closeFullPlayer()"></i>
-            <span style="font-size:11px; font-weight:900; letter-spacing:3px;">NOTTI MUSIC</span>
+            <span style="font-size:10px; font-weight:900; letter-spacing:2px;">NOTTI MUSIC</span>
             <i class="fas fa-ellipsis-h"></i>
         </div>
 
-        <div class="cover-container" style="margin-top: 50px;">
+        <div class="cover-container" id="swipe-area" style="margin-top: 50px;">
             <img id="f-img" class="f-img" src="">
-            <div class="visualizer">
-                <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-            </div>
         </div>
 
-        <div style="width:100%; margin-top: 35px;">
-            <div id="f-title" style="font-size:28px; font-weight:900; letter-spacing:-0.5px;"></div>
-            <div id="f-artist" style="font-size:18px; opacity:0.5; margin-top:6px;"></div>
+        <div style="width:100%; margin-top: 40px;">
+            <div id="f-title" style="font-size:26px; font-weight:900;"></div>
+            <div id="f-artist" style="font-size:18px; opacity:0.5; margin-top:5px;"></div>
         </div>
 
-        <div style="width:100%; margin-top: 35px;">
+        <div style="width:100%; margin-top: 30px;">
             <input type="range" id="progress-slider" value="0" step="1" oninput="seekTrack(this.value)">
-            <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:10px; opacity:0.5; font-variant-numeric: tabular-nums;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:10px; opacity:0.5;">
                 <span id="time-current">0:00</span>
                 <span id="time-total">0:00</span>
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:45px; margin-top:40px;">
-            <i class="fas fa-step-backward" style="font-size:28px;" onclick="prevTrack()"></i>
+        <div style="display:flex; align-items:center; gap:40px; margin-top:40px;">
+            <i class="fas fa-step-backward" style="font-size:24px;" onclick="prevTrack()"></i>
             <div class="btn-play-big" onclick="togglePlay(event)">
                 <i id="f-play-icon" class="fas fa-play"></i>
             </div>
-            <i class="fas fa-step-forward" style="font-size:28px;" onclick="nextTrack()"></i>
+            <i class="fas fa-step-forward" style="font-size:24px;" onclick="nextTrack()"></i>
         </div>
 
-        <div style="width:100%; display:flex; justify-content:space-between; margin-top:70px;">
-            <i id="like-btn" class="far fa-heart" style="font-size:28px;" onclick="toggleLike()"></i>
-            <i class="fas fa-share-alt" style="font-size:26px;" onclick="shareTrack()"></i>
+        <div style="width:100%; display:flex; justify-content:space-between; margin-top:60px;">
+            <i id="like-btn" class="far fa-heart" style="font-size:26px;" onclick="toggleLike()"></i>
+            <i class="fas fa-share-alt" style="font-size:24px;" onclick="shareTrack()"></i>
         </div>
     </div>
 
     <nav class="glass">
         <a href="javascript:void(0)" onclick="showPage('home', this)" class="active"><i class="fas fa-home"></i><span>Главная</span></a>
         <a href="javascript:void(0)" onclick="showPage('search', this)"><i class="fas fa-search"></i><span>Поиск</span></a>
+        <a href="javascript:void(0)" onclick="showPage('favorites', this)"><i class="fas fa-heart"></i><span>Избранное</span></a>
+        <a href="javascript:void(0)" onclick="showPage('settings', this)"><i class="fas fa-cog"></i><span>Настройки</span></a>
     </nav>
 </div>
 
@@ -209,7 +223,10 @@
     let player;
     let currentPlaylist = [];
     let currentIndex = -1;
-    const colors = ['#504c4c', '#1e3a8a', '#1e40af', '#3730a3', '#5b21b6', '#6b21a8', '#86198f', '#9d174d', '#991b1b'];
+    let favorites = JSON.parse(localStorage.getItem('notti_favs')) || [];
+    let userSettings = JSON.parse(localStorage.getItem('notti_settings')) || { lang: 'ru', accent: '#1DB954' };
+
+    const colors = ['#504c4c', '#1e3a8a', '#3730a3', '#5b21b6', '#9d174d', '#991b1b'];
 
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', {
@@ -242,10 +259,10 @@
         document.getElementById('f-title').innerText = title;
         document.getElementById('f-artist').innerText = artist;
 
-        // Смена динамического цвета
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
         document.documentElement.style.setProperty('--dynamic-color', randomColor);
 
+        checkLikeStatus(id);
         player.loadVideoById(id);
         player.playVideo();
         tg.HapticFeedback.impactOccurred('light');
@@ -255,15 +272,11 @@
         const icon = isPlaying ? 'fa-pause' : 'fa-play';
         document.getElementById('m-play').className = 'fas ' + icon;
         document.getElementById('f-play-icon').className = 'fas ' + icon;
-        
-        const fp = document.getElementById('full-player');
-        isPlaying ? fp.classList.add('playing') : fp.classList.remove('playing');
-        
         if(isPlaying) startTimer();
     }
 
     function startTimer() {
-        setInterval(() => {
+        const interval = setInterval(() => {
             if(player && player.getCurrentTime) {
                 const cur = player.getCurrentTime();
                 const dur = player.getDuration();
@@ -274,7 +287,7 @@
                     document.getElementById('time-current').innerText = formatTime(cur);
                     document.getElementById('time-total').innerText = formatTime(dur);
                 }
-            }
+            } else { clearInterval(interval); }
         }, 1000);
     }
 
@@ -305,22 +318,103 @@
         }
     }
 
-    function seekTrack(v) { player.seekTo(v); }
+    // ЛОГИКА СВАЙПА
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.getElementById('swipe-area').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+    document.getElementById('swipe-area').addEventListener('touchend', e => { 
+        touchEndX = e.changedTouches[0].screenX;
+        const dist = touchEndX - touchStartX;
+        if (dist < -50) { animateSwipe('left'); nextTrack(); }
+        if (dist > 50) { animateSwipe('right'); prevTrack(); }
+    });
+
+    function animateSwipe(dir) {
+        const img = document.getElementById('f-img');
+        const cls = dir === 'left' ? 'slide-left' : 'slide-right';
+        img.classList.add(cls);
+        setTimeout(() => img.classList.remove(cls), 300);
+        tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    // МОЯ ВОЛНА
+    async function playMyWave() {
+        const seed = favorites.length > 0 ? favorites[Math.floor(Math.random()*favorites.length)].artist : 'хиты';
+        const res = await fetch(`/api/search?q=${encodeURIComponent(seed)}`);
+        const tracks = await res.json();
+        if(tracks.length > 0) playTrack(tracks[0].id, tracks[0].title, tracks[0].artist, tracks[0].img, tracks);
+    }
+
+    // ИЗБРАННОЕ
+    function toggleLike() {
+        const track = currentPlaylist[currentIndex];
+        const idx = favorites.findIndex(t => t.id === track.id);
+        if(idx === -1) {
+            favorites.push(track);
+            tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            favorites.splice(idx, 1);
+        }
+        localStorage.setItem('notti_favs', JSON.stringify(favorites));
+        checkLikeStatus(track.id);
+        renderFavorites();
+    }
+
+    function checkLikeStatus(id) {
+        const heart = document.getElementById('like-btn');
+        const isFav = favorites.some(t => t.id === id);
+        heart.className = isFav ? 'fas fa-heart' : 'far fa-heart';
+        heart.style.color = isFav ? 'var(--accent-color)' : 'white';
+    }
+
+    function renderFavorites() {
+        const cont = document.getElementById('fav-results');
+        cont.innerHTML = favorites.map(t => `
+            <div class="glass" style="display:flex; align-items:center; margin-bottom:12px; padding:12px; border-radius:15px;" onclick="playTrack('${t.id}','${t.title}','${t.artist}','${t.img}', favorites)">
+                <img src="${t.img}" style="width:50px; border-radius:10px; margin-right:15px;">
+                <div style="flex-grow:1; overflow:hidden;">
+                    <div style="font-size:14px; font-weight:bold;">${t.title}</div>
+                    <div style="font-size:12px; opacity:0.5;">${t.artist}</div>
+                </div>
+            </div>
+        `).join('') || '<p style="opacity:0.5; text-align:center;">Нет избранных треков</p>';
+    }
+
+    // НАСТРОЙКИ
+    function setAccent(color) {
+        document.documentElement.style.setProperty('--accent-color', color);
+        userSettings.accent = color;
+        localStorage.setItem('notti_settings', JSON.stringify(userSettings));
+    }
+
+    function changeLanguage(lang) {
+        const dict = {
+            ru: { trending: "В ТРЕНДЕ", fav: "Избранное", settings: "Настройки", color: "Цвет акцента", lang: "Язык" },
+            en: { trending: "TRENDING", fav: "Favorites", settings: "Settings", color: "Accent Color", lang: "Language" }
+        };
+        document.getElementById('txt-trending').innerText = dict[lang].trending;
+        document.getElementById('txt-fav').innerText = dict[lang].fav;
+        document.getElementById('txt-settings').innerText = dict[lang].settings;
+        document.getElementById('txt-ui-color').innerText = dict[lang].color;
+        document.getElementById('txt-ui-lang').innerText = dict[lang].lang;
+        userSettings.lang = lang;
+        localStorage.setItem('notti_settings', JSON.stringify(userSettings));
+    }
+
     function openFullPlayer() { document.getElementById('full-player').classList.add('open'); }
     function closeFullPlayer() { document.getElementById('full-player').classList.remove('open'); }
+    function seekTrack(v) { player.seekTo(v); }
 
-    // Поиск
+    // Поиск (Enter)
     document.getElementById('search-input').onkeypress = async function(e) {
         if(e.key === 'Enter') {
             const res = await fetch(`/api/search?q=${encodeURIComponent(this.value)}`);
             const tracks = await res.json();
-            const cont = document.getElementById('search-results');
-            cont.innerHTML = tracks.map(t => `
-                <div class="glass" style="display:flex; align-items:center; margin-bottom:12px; padding:12px; border-radius:15px;" 
-                     onclick="playTrack('${t.id}','${t.title}','${t.artist}','${t.img}', ${JSON.stringify(tracks).replace(/"/g, '&quot;')})">
+            document.getElementById('search-results').innerHTML = tracks.map(t => `
+                <div class="glass" style="display:flex; align-items:center; margin-bottom:12px; padding:12px; border-radius:15px;" onclick="playTrack('${t.id}','${t.title}','${t.artist}','${t.img}', ${JSON.stringify(tracks).replace(/"/g, '&quot;')})">
                     <img src="${t.img}" style="width:50px; border-radius:10px; margin-right:15px;">
-                    <div style="flex-grow:1; overflow:hidden;">
-                        <div style="font-size:15px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
+                    <div style="flex-grow:1;">
+                        <div style="font-size:15px; font-weight:bold;">${t.title}</div>
                         <div style="font-size:12px; opacity:0.5;">${t.artist}</div>
                     </div>
                 </div>
@@ -329,18 +423,25 @@
     }
 
     async function loadCharts() {
-        const res = await fetch('/api/charts');
-        const data = await res.json();
-        document.getElementById('top-charts').innerHTML = data.map(t => `
-            <div onclick="playTrack('${t.id}','${t.title}','${t.artist}','${t.img}', ${JSON.stringify(data).replace(/"/g, '&quot;')})" 
-                 style="min-width:150px; text-align:center;">
-                <img src="${t.img}" style="width:150px; height:150px; border-radius:20px; box-shadow:0 15px 30px rgba(0,0,0,0.4);">
-                <div style="font-size:13px; font-weight:bold; margin-top:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
-            </div>
-        `).join('');
+        try {
+            const res = await fetch('/api/charts');
+            const data = await res.json();
+            document.getElementById('top-charts').innerHTML = data.map(t => `
+                <div onclick="playTrack('${t.id}','${t.title}','${t.artist}','${t.img}', ${JSON.stringify(data).replace(/"/g, '&quot;')})" style="min-width:140px;">
+                    <img src="${t.img}" style="width:140px; height:140px; border-radius:20px;">
+                    <div style="font-size:12px; font-weight:bold; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
+                </div>
+            `).join('');
+        } catch(e) {}
     }
 
-    window.onload = () => { loadCharts(); };
+    window.onload = () => { 
+        loadCharts(); 
+        setAccent(userSettings.accent);
+        changeLanguage(userSettings.lang);
+        document.getElementById('lang-select').value = userSettings.lang;
+        renderFavorites();
+    };
 </script>
 </body>
 </html>
