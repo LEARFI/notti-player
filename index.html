@@ -3,262 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Notti Music Engine</title>
+    <title>Notti Music Fixed</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        /* ОПТИМИЗАЦИЯ ОТРИСОВКИ */
         :root {
             --accent: #1DB954;
             --bg: #000;
             --panel: #121212;
-            --safe-top: env(safe-area-inset-top);
-            --safe-bottom: env(safe-area-inset-bottom);
-        }
-
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            /* Убираем лишние расчеты браузера */
-            -webkit-font-smoothing: antialiased;
-            touch-action: manipulation;
         }
 
         body, html {
-            background: var(--bg);
-            color: white;
-            font-family: -apple-system, system-ui, sans-serif;
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow: hidden; /* Запрещаем общий скролл (защита от "беготни") */
-            position: fixed; /* Фиксируем всё тело */
+            background: var(--bg); color: white; margin: 0; padding: 0;
+            height: 100%; width: 100%; overflow: hidden; font-family: sans-serif;
         }
 
-        /* ГЛАВНЫЙ КОНТЕЙНЕР */
-        .app-wrapper {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-            position: relative;
+        .app-container { display: flex; flex-direction: column; height: 100vh; }
+
+        /* Секции контента */
+        .page { 
+            display: none; flex: 1; overflow-y: auto; 
+            padding: 20px 20px 150px; -webkit-overflow-scrolling: touch; 
+        }
+        .page.active { display: block; }
+
+        /* Поиск */
+        .search-wrapper { padding: 15px 20px; background: #000; }
+        .search-input { 
+            background: #1a1a1a; border: none; border-radius: 10px; padding: 12px; 
+            width: 100%; color: white; outline: none; font-size: 16px;
         }
 
-        /* ЗОНА КОНТЕНТА (ЕДИНСТВЕННЫЙ СКРОЛЛ) */
-        .scroll-container {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* Плавный скролл iOS */
-            padding: calc(20px + var(--safe-top)) 20px 180px;
-            will-change: transform;
+        /* Карточки */
+        .artist-row { display: flex; overflow-x: auto; gap: 15px; margin-bottom: 25px; padding-bottom: 10px; }
+        .artist-card { min-width: 100px; text-align: center; cursor: pointer; }
+        .artist-card img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid #222; }
+
+        .track-card { 
+            display: flex; align-items: center; padding: 10px; background: var(--panel); 
+            border-radius: 12px; margin-bottom: 10px; cursor: pointer;
+        }
+        .track-card img { width: 50px; height: 50px; border-radius: 6px; margin-right: 15px; }
+
+        /* Мини-плеер */
+        .player-mini { 
+            position: fixed; bottom: 85px; left: 10px; right: 10px; 
+            background: var(--accent); color: black; border-radius: 12px; 
+            padding: 10px 15px; display: none; align-items: center; z-index: 1000;
         }
 
-        /* ШАПКА */
-        .header {
-            padding: 15px 20px;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            z-index: 100;
+        /* Навигация */
+        nav { 
+            position: fixed; bottom: 0; left: 0; right: 0; height: 75px; 
+            background: #000; border-top: 1px solid #1a1a1a; display: flex; 
+            padding-bottom: env(safe-area-inset-bottom);
         }
-
-        /* ПОИСК */
-        .search-bar {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: 10px 15px;
-            display: flex;
-            align-items: center;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .search-bar input {
-            background: none; border: none; color: white; width: 100%;
-            outline: none; font-size: 16px; margin-left: 10px;
-        }
-
-        /* КАРТОЧКИ (ОПТИМИЗИРОВАННЫЕ) */
-        .track-card {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin-bottom: 8px;
-            background: var(--panel);
-            border-radius: 10px;
-            transform: translate3d(0,0,0); /* HW Acceleration */
-            cursor: pointer;
-        }
-        .track-card img {
-            width: 50px; height: 50px; border-radius: 6px;
-            margin-right: 15px; object-fit: cover;
-            background: #222;
-        }
-
-        /* ФИКСИРОВАННЫЙ ПЛЕЕР (НИЗ) */
-        .player-bar {
-            position: fixed;
-            bottom: 80px; left: 10px; right: 10px;
-            height: 64px;
-            background: var(--accent);
-            border-radius: 14px;
-            display: none; /* Скрыт до старта */
-            align-items: center;
-            padding: 0 15px;
-            z-index: 1000;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            color: black;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        /* ПОЛНОЭКРАННЫЙ ПЛЕЕР (ВЫСОКАЯ ОПТИМИЗАЦИЯ) */
-        .full-player {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            z-index: 10000;
-            transform: translate3d(0, 100%, 0);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex;
-            flex-direction: column;
-            padding: 60px 30px;
-            align-items: center;
-        }
-        .full-player.open { transform: translate3d(0, 0, 0); }
-
-        .big-cover {
-            width: 85vw; max-width: 320px;
-            aspect-ratio: 1/1;
-            border-radius: 20px;
-            object-fit: cover;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-            margin-bottom: 40px;
-        }
-
-        /* КНОПКИ УПРАВЛЕНИЯ */
-        .controls { display: flex; align-items: center; gap: 40px; }
-        .play-main {
-            width: 70px; height: 70px; background: white; color: black;
-            border-radius: 50%; display: flex; align-items: center; 
-            justify-content: center; font-size: 28px;
-        }
-
-        /* МЕНЮ */
-        nav {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 70px;
-            background: #000;
-            display: flex;
-            border-top: 1px solid #1a1a1a;
-            padding-bottom: var(--safe-bottom);
-            z-index: 900;
-        }
-        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; opacity: 0.5; }
+        nav div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; opacity: 0.5; cursor: pointer; }
         nav div.active { opacity: 1; color: var(--accent); }
-        nav i { font-size: 20px; margin-bottom: 4px; }
+        nav i { font-size: 22px; margin-bottom: 4px; }
 
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        #yt-player { position: absolute; top: -9999px; pointer-events: none; }
+        #yt-player { position: absolute; top: -9999px; }
     </style>
 </head>
 <body>
 
 <div id="yt-player"></div>
 
-<div class="app-wrapper">
-    <div class="header">
-        <div class="search-bar">
-            <i class="fas fa-search" style="opacity: 0.5;"></i>
-            <input type="text" id="searchInput" placeholder="Поиск (YT, Spotify, Mix)...">
+<div class="app-container">
+    <div class="search-wrapper">
+        <input type="text" id="searchInput" class="search-input" placeholder="Треки, альбомы, артисты...">
+    </div>
+
+    <div id="home" class="page active">
+        <h2>Популярные артисты</h2>
+        <div class="artist-row" id="artistList"></div>
+
+        <h2>Твои миксы</h2>
+        <div id="mixList"></div>
+    </div>
+
+    <div id="favorites" class="page">
+        <h2>Моя медиатека</h2>
+        <div id="favTracks">
+            <p style="opacity:0.4; text-align:center; margin-top:50px;">Здесь будут ваши любимые треки</p>
         </div>
     </div>
 
-    <div class="scroll-container" id="mainView">
-        <h2 style="font-weight: 800;">Твое Избранное</h2>
-        <div id="favList"></div>
-        
-        <h2 style="margin-top: 30px; font-weight: 800;">Рекомендации</h2>
-        <div id="resultsList">
-            <div class="track-card" onclick="startSearch('Платина')">
-                <img src="https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512">
-                <div><b>Платина</b><div style="font-size:12px; opacity:0.5;">Исполнитель</div></div>
-            </div>
-            <div class="track-card" onclick="startSearch('OG Buda')">
-                <img src="https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98">
-                <div><b>OG Buda</b><div style="font-size:12px; opacity:0.5;">Исполнитель</div></div>
-            </div>
+    <div id="settings" class="page">
+        <h2>Настройки</h2>
+        <div style="background:var(--panel); padding:20px; border-radius:15px;">
+            <p>Качество: <b>Высокое (320kbps)</b></p>
+            <p>Источник: <b>Notti Music Cloud</b></p>
+            <hr style="opacity:0.1">
+            <button onclick="clearAll()" style="background:#ff3b30; border:none; color:white; padding:10px; width:100%; border-radius:8px;">Очистить всё</button>
         </div>
     </div>
 
-    <div class="player-bar" id="miniPlayer" onclick="openFull()">
+    <div class="player-mini" id="miniPlayer">
         <img id="mImg" src="">
-        <div style="flex:1; overflow:hidden; font-weight:700; font-size:14px; white-space:nowrap; text-overflow:ellipsis;" id="mTitle"></div>
-        <i id="mPlayBtn" class="fas fa-play" style="font-size:20px; padding:10px;" onclick="event.stopPropagation(); togglePlay();"></i>
-    </div>
-
-    <div class="full-player" id="fullPlayer">
-        <i class="fas fa-chevron-down" style="position:absolute; top:50px; left:25px; font-size:24px;" onclick="closeFull()"></i>
-        <img id="fImg" class="big-cover" src="">
-        <div id="fTitle" style="font-size:24px; font-weight:800; text-align:center;"></div>
-        <div id="fArtist" style="font-size:16px; opacity:0.5; margin-bottom:40px;"></div>
-        
-        <div class="controls">
-            <i class="fas fa-step-backward" style="font-size:28px;" onclick="prev()"></i>
-            <div class="play-main" onclick="togglePlay()">
-                <i id="fPlayBtn" class="fas fa-play"></i>
-            </div>
-            <i class="fas fa-step-forward" style="font-size:28px;" onclick="next()"></i>
-        </div>
-        
-        <i class="far fa-heart" id="likeBtn" style="margin-top:50px; font-size:28px;" onclick="toggleLike()"></i>
+        <div style="flex:1; overflow:hidden; font-weight:bold; white-space:nowrap; text-overflow:ellipsis;" id="mTitle"></div>
+        <i id="mPlayBtn" class="fas fa-play" style="font-size:20px; padding:5px 10px;" onclick="togglePlay()"></i>
     </div>
 
     <nav>
-        <div class="active" onclick="switchTab('home', this)"><i class="fas fa-home"></i>Главная</div>
-        <div onclick="switchTab('search', this)"><i class="fas fa-heart"></i>Избранное</div>
-        <div onclick="tg.showAlert('Версия 3.1 Оптимизирована')"><i class="fas fa-cog"></i>Опции</div>
+        <div class="active" onclick="switchPage('home', this)"><i class="fas fa-home"></i>Главная</div>
+        <div onclick="switchPage('favorites', this)"><i class="fas fa-heart"></i>Избранное</div>
+        <div onclick="switchPage('settings', this)"><i class="fas fa-cog"></i>Опции</div>
     </nav>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    tg.expand();
-    tg.enableClosingConfirmation();
-
     let player, playlist = [], curIdx = -1;
     let favorites = JSON.parse(localStorage.getItem('notti_favs') || '[]');
+
+    const artists = [
+        { name: "Платина", img: "https://i.scdn.co/image/ab6761610000e5ebc18600d58852655a6d573512" },
+        { name: "OG Buda", img: "https://i.scdn.co/image/ab6761610000e5eb9875f5436c9443586a345a98" },
+        { name: "Friendly Thug", img: "https://i.scdn.co/image/ab6761610000e5eb559810775d799988a87c5305" }
+    ];
 
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', {
             events: {
                 'onStateChange': (e) => {
-                    const isPlaying = e.data === 1;
-                    document.getElementById('mPlayBtn').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
-                    document.getElementById('fPlayBtn').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
-                    if(e.data === 0) next();
+                    document.getElementById('mPlayBtn').className = e.data === 1 ? 'fas fa-pause' : 'fas fa-play';
                 }
             }
         });
     }
 
+    function renderHome() {
+        document.getElementById('artistList').innerHTML = artists.map(a => `
+            <div class="artist-card" onclick="startSearch('${a.name}')">
+                <img src="${a.img}">
+                <div>${a.name}</div>
+            </div>
+        `).join('');
+    }
+
     async function startSearch(val) {
+        switchPage('home', document.querySelector('nav div')); // Возвращаем на главную при поиске
         const res = await fetch(`/api/search?q=${encodeURIComponent(val + " Official Audio")}`);
         const data = await res.json();
         playlist = data;
-        renderList(data);
-    }
-
-    function renderList(data) {
-        const cont = document.getElementById('resultsList');
-        cont.innerHTML = data.map((t, i) => `
+        
+        document.getElementById('mixList').innerHTML = data.map((t, i) => `
             <div class="track-card" onclick="play(${i})">
                 <img src="${t.img}">
                 <div style="flex:1; overflow:hidden;">
-                    <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${t.title}</div>
+                    <div style="font-weight:bold; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${t.title}</div>
                     <div style="font-size:12px; opacity:0.5;">${t.artist}</div>
                 </div>
+                <i class="far fa-heart" onclick="event.stopPropagation(); addFav(${i})"></i>
             </div>
         `).join('');
     }
@@ -267,18 +166,12 @@
         curIdx = idx;
         const t = playlist[curIdx];
         document.getElementById('miniPlayer').style.display = 'flex';
-        
         document.getElementById('mImg').src = t.img;
-        document.getElementById('fImg').src = t.img;
         document.getElementById('mTitle').innerText = t.title;
-        document.getElementById('fTitle').innerText = t.title;
-        document.getElementById('fArtist').innerText = t.artist;
         
         player.loadVideoById(t.id);
         player.playVideo();
         player.unMute();
-        updateLikeUI();
-        tg.HapticFeedback.impactOccurred('light');
     }
 
     function togglePlay() {
@@ -286,37 +179,32 @@
         else player.playVideo();
     }
 
-    function next() { if(curIdx < playlist.length - 1) play(curIdx + 1); }
-    function prev() { if(curIdx > 0) play(curIdx - 1); }
-
-    function openFull() { document.getElementById('fullPlayer').classList.add('open'); }
-    function closeFull() { document.getElementById('fullPlayer').classList.remove('open'); }
-
-    function toggleLike() {
-        const t = playlist[curIdx];
-        const idx = favorites.findIndex(f => f.id === t.id);
-        if(idx === -1) {
-            favorites.push(t);
-            tg.HapticFeedback.notificationOccurred('success');
-        } else {
-            favorites.splice(idx, 1);
-        }
-        localStorage.setItem('notti_favs', JSON.stringify(favorites));
-        updateLikeUI();
-        renderFavs();
+    function switchPage(pageId, el) {
+        // Скрываем все страницы
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        // Показываем нужную
+        document.getElementById(pageId).classList.add('active');
+        // Обновляем меню
+        document.querySelectorAll('nav div').forEach(d => d.classList.remove('active'));
+        el.classList.add('active');
+        
+        if(pageId === 'favorites') renderFavs();
+        tg.HapticFeedback.impactOccurred('light');
     }
 
-    function updateLikeUI() {
-        const t = playlist[curIdx];
-        const isFav = favorites.some(f => f.id === t.id);
-        document.getElementById('likeBtn').className = isFav ? 'fas fa-heart' : 'far fa-heart';
-        document.getElementById('likeBtn').style.color = isFav ? var(--accent) : 'white';
+    function addFav(idx) {
+        const t = playlist[idx];
+        if(!favorites.some(f => f.id === t.id)) {
+            favorites.push(t);
+            localStorage.setItem('notti_favs', JSON.stringify(favorites));
+            tg.showAlert("Добавлено в избранное!");
+        }
     }
 
     function renderFavs() {
-        const cont = document.getElementById('favList');
+        const cont = document.getElementById('favTracks');
         if(favorites.length === 0) {
-            cont.innerHTML = '<p style="opacity:0.3; text-align:center;">Пусто</p>';
+            cont.innerHTML = '<p style="opacity:0.4; text-align:center; margin-top:50px;">Тут пока пусто</p>';
             return;
         }
         cont.innerHTML = favorites.map((t, i) => `
@@ -327,17 +215,16 @@
         `).join('');
     }
 
-    function switchTab(tab, el) {
-        document.querySelectorAll('nav div').forEach(d => d.classList.remove('active'));
-        el.classList.add('active');
-        if(tab === 'search') renderFavs();
+    function clearAll() {
+        localStorage.clear();
+        location.reload();
     }
 
     document.getElementById('searchInput').onkeypress = (e) => {
         if(e.key === 'Enter') startSearch(e.target.value);
     };
 
-    window.onload = renderFavs;
+    window.onload = renderHome;
 </script>
 </body>
 </html>
